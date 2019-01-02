@@ -12,8 +12,6 @@ namespace Crunch.Machine
     {
         public static readonly HashSet<char> Reserved = new HashSet<char>() { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '*', '×', '/', '(', ')', '.' };
 
-        //public static Operator BinaryOperator(Func<object, object, object> f) => new Operator((o) => f(o[0], o[1]), -1, 1);
-
         public static bool IsEqualTo<T>(this Node<T> node, string str) => node != null && node.Value is string && node.Value.ToString() == str;
 
         /// <summary>
@@ -64,58 +62,40 @@ namespace Crunch.Machine
             operations.Contains("*", out juxtapose);
             int multiplication = operations.IndexOf("*");
 
-            /*bool juxtapose = operations.Contains("*").ToBool();
-            Action<Node<object>> checkForJuxtapose = (node) =>
-            {
-                //Check backwards
-                if (juxtapose && node?.Previous != null && (!(node.Previous.Value is string) || !operations.Contains(node.Previous.Value.ToString()).ToBool()))
-                {
-                    Node<object> n = new Node<object>("*");
-                    p.Last.Value.Splice(node.Previous, n);
-                    p.Last.Value.operations.TryGet("*").Push(n);
-                }
-            };*/
-
             str = "(" + str + ")";
 
             for (int i = 0; i < str.Length; i++)
             {
                 char c = str[i];
                 
+                if (c == ' ')
+                {
+                    continue;
+                }
+
                 if (c.IsOpening())
                 {
                     quantities.Push(new Evaluator(new Quantity(), new LinkedList<Node<object>>[operations.Count]));
                 }
                 else if (c.IsClosing())
                 {
-                    //Quantity q = quantities.Pop();
                     Evaluator e = quantities.Pop();
                     
                     for (int j = 0; j < e.Item2.Length; j++)
                     {
                         LinkedList<Node<object>> stack = e.Item2[j];
-                        
-                        /*for (int j = 0; j < q.operations.Count; j++)
-                        {
-                            string key = operations[j].Key;
-
-                            if (q.operations.ContainsKey(key))
-                            {
-                                LinkedList<Node<object>> stack = q.operations[key];*/
 
                         while (stack?.Count > 0)
                         {
                             Node<object> node = stack.Dequeue().Value;
                             Operator op = (Operator)node.Value;
-                            //multiplying = op == juxtapose;
-                            //Operator op = (node.Value == negator && node.Previous == null) ? negator : (Operator)node.Value;// operations[j].Value;
-
-                            object[] operands = new object[op.Targets.Length];
-                            //foreach (Func<Node<object>, Node<object>> retrieveTarget in op.Targets)
+                            
+                            Node<object>[] operandNodes = new Node<object>[op.Targets.Length];
+                            
                             for (int k = 0; k < op.Targets.Length; k++)
                             {
                                 Node<object> operand = op.Targets[k](node);
-
+                                
                                 if (operand == node.Next && operand.IsEqualTo("-"))
                                 {
                                     operand.Next.Value = negate(operand.Next.Value);
@@ -123,15 +103,18 @@ namespace Crunch.Machine
                                     operand = node.Next;
                                 }
 
-                                operands[k] = e.Item1.Remove(operand)?.Value;
+                                operandNodes[k] = operand;
+                            }
+                            
+                            object[] operands = new object[operandNodes.Length];
+                            for (int k = 0; k < operands.Length; k++)
+                            {
+                                operands[k] = e.Item1.Remove(operandNodes[k])?.Value;
                             }
 
                             node.Value = op.Operate(operands);
                         }
-                        //}
 
-                        //if (key == "*")
-                        //print.log(count, multiplication);
                         if (j == multiplication)
                         {
                             Node<object> node = e.Item1.First;
@@ -139,7 +122,6 @@ namespace Crunch.Machine
                             while (node != null && node.Next != null)
                             {
                                 if (node.Value is Operator || node.IsEqualTo("-") || node.Next.Value is Operator || node.Next.IsEqualTo("-"))
-                                //if (node.IsEqualTo("+") || node.IsEqualTo("-") || node.Next.IsEqualTo("+") || node.Next.IsEqualTo("-"))
                                 {
                                     node = node.Next;
                                 }
@@ -161,11 +143,7 @@ namespace Crunch.Machine
                         quantities.Push(new Evaluator(new Quantity(), new LinkedList<Node<object>>[operations.Count]));
                     }
 
-                    //parend?.Invoke(e.Item1);
-                    //q.AddFirst("(");
-                    //q.AddLast(")");
                     quantities.Peek().Item1.AddLast(e.Item1);
-                    //checkForJuxtapose(p.Last.Value.Last);
                 }
                 else
                 {
@@ -195,13 +173,10 @@ namespace Crunch.Machine
 
                     if (operation > i)
                     {
-                        bool isNegativeSign = s == "-" && node.Previous != null && node.Previous.Value is Operator;// node.Previous.Value is string && operations.Contains(node.Previous.Value.ToString()).ToBool();
+                        bool isNegativeSign = s == "-" && node.Previous != null && node.Previous.Value is Operator;
 
                         if (!isNegativeSign)
                         {
-                            //SortedDictionary<int, Operator> dict = new SortedDictionary<int, Operator>();
-                            //dict.Add(operations.IndexOf(s), op);
-                            //p.Last.Value.operations.TryGet(s).Push(node);
                             node.Value = s == "-" && node.Previous == null ? negator : op;
                             int index = operations.IndexOf(s);
                             

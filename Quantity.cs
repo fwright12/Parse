@@ -6,16 +6,6 @@ namespace Crunch.Machine
 {
     public class Quantity
     {
-        //public LinkedList<Node<object>>[] operations;
-        //public SortedDictionary<int, LinkedList<Node<object>>> operations = new SortedDictionary<int, LinkedList<Node<object>>>();
-        //public Dictionary<string, LinkedList<Node<object>>> operations = new Dictionary<string, LinkedList<Node<object>>>();
-
-        /*public LinkedList<Node<object>> e = new LinkedList<Node<object>>();
-        public LinkedList<Node<object>> d = new LinkedList<Node<object>>();
-        public LinkedList<Node<object>> m = new LinkedList<Node<object>>();
-        public LinkedList<Node<object>> a = new LinkedList<Node<object>>();
-        public LinkedList<Node<object>> s = new LinkedList<Node<object>>();*/
-
         public Node<object> First => first;
         public Node<object> Last => last;
 

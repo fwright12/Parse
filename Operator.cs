@@ -11,9 +11,8 @@ namespace Crunch.Machine
     public class Operator
     {
         public FunctionWithVariableParamterCount Operate;
-        //public int[] Targets;
         public Func<Node<object>, Node<object>>[] Targets;
-        //public Operator(Operation operate, params int[] targets) { Operate = operate; Targets = targets; }
+
         public Operator(FunctionWithVariableParamterCount operate, params Func<Node<object>, Node<object>>[] targets) { Operate = operate; Targets = targets; }
     }
 

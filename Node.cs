@@ -21,7 +21,6 @@ namespace Crunch.Machine
         }
 
         public static Node<T> operator +(Node<T> node, int i) => iterate(i < 0 ? PreviousNode : NextNode, node, i);
-        //public static Node<T> operator -(Node<T> node, int i) => iterate(previous, node, i);
 
         private static Node<T> iterate(Func<Node<T>, Node<T>> iterator, Node<T> node, int iterations)
         {
