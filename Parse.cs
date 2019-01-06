@@ -95,7 +95,7 @@ namespace Crunch.Machine
                             for (int k = 0; k < op.Targets.Length; k++)
                             {
                                 Node<object> operand = op.Targets[k](node);
-                                
+
                                 if (operand == node.Next && operand.IsEqualTo("-"))
                                 {
                                     operand.Next.Value = negate(operand.Next.Value);
@@ -105,7 +105,7 @@ namespace Crunch.Machine
 
                                 operandNodes[k] = operand;
                             }
-                            
+
                             object[] operands = new object[operandNodes.Length];
                             for (int k = 0; k < operands.Length; k++)
                             {
@@ -178,6 +178,7 @@ namespace Crunch.Machine
                         if (!isNegativeSign)
                         {
                             node.Value = s == "-" && node.Previous == null ? negator : op;
+
                             int index = operations.IndexOf(s);
                             
                             if (quantities.Peek().Item2[index] == null)
