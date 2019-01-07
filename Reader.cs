@@ -8,7 +8,7 @@ using System.Extensions;
 
 namespace Crunch.Machine
 {
-    using Evaluator = Tuple<Quantity, LinkedList<Node<object>>[]>;
+    using Evaluator = Tuple<LinkedList<object>, LinkedList<LinkedListNode<object>>[]>;
 
     public class Reader
     {
@@ -19,7 +19,7 @@ namespace Crunch.Machine
             Operations = operations;
         }
 
-        public Quantity Parse(string input)
+        public LinkedList<object> Parse(string input)
         {
             print.log("parsing " + input);
             Stack<Evaluator> quantities = new Stack<Evaluator>();
@@ -41,7 +41,7 @@ namespace Crunch.Machine
 
                 if (c.IsOpening())
                 {
-                    quantities.Push(new Evaluator(new Quantity(), new LinkedList<Node<object>>[Operations.Count]));
+                    quantities.Push(new Evaluator(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Operations.Count]));
                 }
                 else if (c.IsClosing())
                 {
@@ -55,7 +55,7 @@ namespace Crunch.Machine
                         {
                             return e.Item1;
                         }
-                        quantities.Push(new Evaluator(new Quantity(), new LinkedList<Node<object>>[Operations.Count]));
+                        quantities.Push(new Evaluator(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Operations.Count]));
                     }
 
                     quantities.Peek().Item1.AddLast(e.Item1);
@@ -65,15 +65,15 @@ namespace Crunch.Machine
                     string s = Search(input.Substring(i));
                     int index = Operations.IndexOf(s);
 
-                    Node<object> node = new Node<object>(s);
+                    LinkedListNode<object> node = new LinkedListNode<object>(s);
 
                     if (index != -1)
                     {
-                        node = new Node<object>(Operations[s]);
+                        node = new LinkedListNode<object>(Operations[s]);
 
                         if (quantities.Peek().Item2[index] == null)
                         {
-                            quantities.Peek().Item2[index] = new LinkedList<Node<object>>();
+                            quantities.Peek().Item2[index] = new LinkedList<LinkedListNode<object>>();
                         }
                         var list = quantities.Peek().Item2[index];
 
@@ -117,18 +117,18 @@ namespace Crunch.Machine
         {
             for (int j = 0; j < e.Item2.Length; j++)
             {
-                LinkedList<Node<object>> stack = e.Item2[j];
+                LinkedList<LinkedListNode<object>> stack = e.Item2[j];
 
                 while (stack?.Count > 0)
                 {
-                    Node<object> node = stack.Dequeue().Value;
-                    if (node.Value == null)
+                    LinkedListNode<object> node = stack.Dequeue().Value;
+                    if (node.List == null)
                     {
                         continue;
                     }
                     Operator op = (Operator)node.Value;
 
-                    Node<object>[] operandNodes = new Node<object>[op.Targets.Length];
+                    LinkedListNode<object>[] operandNodes = new LinkedListNode<object>[op.Targets.Length];
 
                     for (int k = 0; k < op.Targets.Length; k++)
                     {
@@ -138,7 +138,11 @@ namespace Crunch.Machine
                     object[] operands = new object[operandNodes.Length];
                     for (int k = 0; k < operands.Length; k++)
                     {
-                        operands[k] = e.Item1.Remove(operandNodes[k])?.Value;
+                        operands[k] = operandNodes[k]?.Value;
+                        if (operandNodes[k] != null)
+                        {
+                            e.Item1.Remove(operandNodes[k]);
+                        }
                     }
 
                     node.Value = op.Operate(operands);
@@ -151,9 +155,9 @@ namespace Crunch.Machine
             }
         }
 
-        private void Juxtapose(Quantity expression, Operator juxtapse)
+        private void Juxtapose(LinkedList<object> expression, Operator juxtapse)
         {
-            Node<object> node = expression.First;
+            LinkedListNode<object> node = expression.First;
 
             while (node.Next != null)
             {

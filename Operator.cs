@@ -11,12 +11,12 @@ namespace Crunch.Machine
     public class Operator
     {
         public FunctionWithVariableParamterCount Operate;
-        public Func<Node<object>, Node<object>>[] Targets;
+        public Func<LinkedListNode<object>, LinkedListNode<object>>[] Targets;
 
-        public Operator(FunctionWithVariableParamterCount operate, params Func<Node<object>, Node<object>>[] targets) { Operate = operate; Targets = targets; }
+        public Operator(FunctionWithVariableParamterCount operate, params Func<LinkedListNode<object>, LinkedListNode<object>>[] targets) { Operate = operate; Targets = targets; }
     }
 
-    public class BinaryOperator : Operator { public BinaryOperator(Func<object, object, object> func, Func<Node<object>, Node<object>> previous, Func<Node<object>, Node<object>> next) : base((o) => func(o[0], o[1]), previous, next) { } }
+    public class BinaryOperator : Operator { public BinaryOperator(Func<object, object, object> func, Func<LinkedListNode<object>, LinkedListNode<object>> previous, Func<LinkedListNode<object>, LinkedListNode<object>> next) : base((o) => func(o[0], o[1]), previous, next) { } }
 
-    public class UnaryOperator : Operator { public UnaryOperator(Func<object, object> func, Func<Node<object>, Node<object>> operand) : base((o) => func(o[0]), operand) { } }
+    public class UnaryOperator : Operator { public UnaryOperator(Func<object, object> func, Func<LinkedListNode<object>, LinkedListNode<object>> operand) : base((o) => func(o[0]), operand) { } }
 }
