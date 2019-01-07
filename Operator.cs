@@ -16,7 +16,7 @@ namespace Crunch.Machine
         public Operator(FunctionWithVariableParamterCount operate, params Func<Node<object>, Node<object>>[] targets) { Operate = operate; Targets = targets; }
     }
 
-    public class BinaryOperator : Operator { public BinaryOperator(Func<object, object, object> func) : base((o) => func(o[0], o[1]), Node<object>.PreviousNode, Node<object>.NextNode) { } }
+    public class BinaryOperator : Operator { public BinaryOperator(Func<object, object, object> func, Func<Node<object>, Node<object>> previous, Func<Node<object>, Node<object>> next) : base((o) => func(o[0], o[1]), previous, next) { } }
 
-    public class UnaryOperator : Operator { public UnaryOperator(Func<object, object> func) : base((o) => func(o[0]), Node<object>.NextNode) { } }
+    public class UnaryOperator : Operator { public UnaryOperator(Func<object, object> func, Func<Node<object>, Node<object>> operand) : base((o) => func(o[0]), operand) { } }
 }

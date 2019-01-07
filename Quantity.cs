@@ -134,6 +134,7 @@ namespace Crunch.Machine
 
         /// <summary>
         /// Remove everything between start and end
+        /// a b c start | d e f g | end h i j -> a b c start end h i j
         /// </summary>
         /// <param name="start"></param>
         /// <param name="end"></param>

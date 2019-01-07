@@ -20,6 +20,11 @@ namespace Crunch.Machine
             Value = value;
         }
 
+        public void Delete()
+        {
+            
+        }
+
         public static Node<T> operator +(Node<T> node, int i) => iterate(i < 0 ? PreviousNode : NextNode, node, i);
 
         private static Node<T> iterate(Func<Node<T>, Node<T>> iterator, Node<T> node, int iterations)
