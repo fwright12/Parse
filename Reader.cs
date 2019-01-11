@@ -10,23 +10,47 @@ namespace Crunch.Machine
 {
     using Evaluator = Tuple<LinkedList<object>, LinkedList<LinkedListNode<object>>[]>;
 
-    public class Reader
+    public abstract class Reader
     {
-        private OrderedTrie<Operator> Operations;
+        public int Count => dict.Count;
 
-        public Reader(OrderedTrie<Operator> operations)
+        protected Trie<Operator> Operations;
+
+        private Dictionary<string, int> dict;
+
+        public Reader(params KeyValuePair<string, Operator>[][] data)
         {
-            Operations = operations;
+            Operations = new Trie<Operator>();
+            dict = new Dictionary<string, int>();
+
+            for (int i = 0; i < data.Length; i++)
+            {
+                for (int j = 0; j < data[i].Length; j++)
+                {
+                    Insert(i, data[i][j].Key, data[i][j].Value);
+                }
+            }
         }
 
-        public LinkedList<object> Parse(string input)
+        public void Add(string symbol, Operator operation) => Insert(dict.Count, symbol, operation);
+
+        public void Insert(int index, string symbol, Operator operation)
+        {
+            KeyValuePair<string, Operator> pair = new KeyValuePair<string, Operator>(symbol, operation);
+            dict.Add(pair.Key, index);
+            Operations.Add(pair.Key, pair.Value);
+        }
+
+        private int IndexOf(string key) => dict.ContainsKey(key) ? dict[key] : -1;
+
+        public virtual LinkedList<object> Parse(string input)
         {
             print.log("parsing " + input);
             Stack<Evaluator> quantities = new Stack<Evaluator>();
 
             Operator juxtapose;
             Operations.Contains("*", out juxtapose);
-            int multiplication = Operations.IndexOf("*");
+            int multiplication = IndexOf("*");
 
             input = "(" + input + ")";
 
@@ -41,7 +65,7 @@ namespace Crunch.Machine
 
                 if (c.IsOpening())
                 {
-                    quantities.Push(new Evaluator(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Operations.Count]));
+                    quantities.Push(new Evaluator(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
                 }
                 else if (c.IsClosing())
                 {
@@ -55,7 +79,7 @@ namespace Crunch.Machine
                         {
                             return e.Item1;
                         }
-                        quantities.Push(new Evaluator(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Operations.Count]));
+                        quantities.Push(new Evaluator(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
                     }
 
                     quantities.Peek().Item1.AddLast(e.Item1);
@@ -63,7 +87,7 @@ namespace Crunch.Machine
                 else
                 {
                     string s = Search(input.Substring(i));
-                    int index = Operations.IndexOf(s);
+                    int index = IndexOf(s);
 
                     LinkedListNode<object> node = new LinkedListNode<object>(s);
 
