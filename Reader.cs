@@ -8,7 +8,19 @@ using System.Extensions;
 
 namespace Crunch.Machine
 {
-    using Evaluator = Tuple<LinkedList<object>, LinkedList<LinkedListNode<object>>[]>;
+    //using Evaluator = Tuple<LinkedList<object>, LinkedList<LinkedListNode<object>>[]>;
+
+    public class Evaluator<T>
+    {
+        public LinkedList<T> Input;
+        public LinkedList<LinkedListNode<T>>[] Operations;
+
+        public Evaluator(LinkedList<T> input, LinkedList<LinkedListNode<T>>[] operations)
+        {
+            Input = input;
+            Operations = operations;
+        }
+    }
 
     public abstract class Reader
     {
@@ -46,7 +58,7 @@ namespace Crunch.Machine
         public virtual LinkedList<object> Parse(string input)
         {
             print.log("parsing " + input);
-            Stack<Evaluator> quantities = new Stack<Evaluator>();
+            Stack<Evaluator<object>> quantities = new Stack<Evaluator<object>>();
 
             Operator juxtapose;
             Operations.Contains("*", out juxtapose);
@@ -65,11 +77,11 @@ namespace Crunch.Machine
 
                 if (c.IsOpening())
                 {
-                    quantities.Push(new Evaluator(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
+                    quantities.Push(new Evaluator<object>(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
                 }
                 else if (c.IsClosing())
                 {
-                    Evaluator e = quantities.Pop();
+                    Evaluator<object> e = quantities.Pop();
 
                     Close(e, multiplication, juxtapose);
 
@@ -77,12 +89,16 @@ namespace Crunch.Machine
                     {
                         if (i + 1 == input.Length)
                         {
-                            return e.Item1;
+                            return e.Input;
                         }
-                        quantities.Push(new Evaluator(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
+                        quantities.Push(new Evaluator<object>(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
                     }
 
-                    quantities.Peek().Item1.AddLast(e.Item1);
+                    /*foreach(object o in e.Input)
+                    {
+                        quantities.Peek().Input.AddLast(o);
+                    }*/
+                    quantities.Peek().Input.AddLast(e.Input);
                 }
                 else
                 {
@@ -95,11 +111,11 @@ namespace Crunch.Machine
                     {
                         node = new LinkedListNode<object>(Operations[s]);
 
-                        if (quantities.Peek().Item2[index] == null)
+                        if (quantities.Peek().Operations[index] == null)
                         {
-                            quantities.Peek().Item2[index] = new LinkedList<LinkedListNode<object>>();
+                            quantities.Peek().Operations[index] = new LinkedList<LinkedListNode<object>>();
                         }
-                        var list = quantities.Peek().Item2[index];
+                        var list = quantities.Peek().Operations[index];
 
                         //These operations are processed right to left
                         if (s == "^" || s == "sin" || s == "cos" || s == "tan")
@@ -122,7 +138,7 @@ namespace Crunch.Machine
                         }
                     }
 
-                    quantities.Peek().Item1.AddLast(node);
+                    quantities.Peek().Input.AddLast(node);
                 }
 
                 if (i + 1 == input.Length)
@@ -137,12 +153,12 @@ namespace Crunch.Machine
             throw new Exception("Error parsing math");
         }
 
-        private void Close(Evaluator e, int multiplication, Operator juxtapose)
+        private void Close(Evaluator<object> e, int multiplication, Operator juxtapose)
         {
-            for (int j = 0; j < e.Item2.Length; j++)
+            for (int j = 0; j < e.Operations.Length; j++)
             {
-                LinkedList<LinkedListNode<object>> stack = e.Item2[j];
-
+                LinkedList<LinkedListNode<object>> stack = e.Operations[j];
+                
                 while (stack?.Count > 0)
                 {
                     LinkedListNode<object> node = stack.Dequeue().Value;
@@ -165,7 +181,7 @@ namespace Crunch.Machine
                         operands[k] = operandNodes[k]?.Value;
                         if (operandNodes[k] != null)
                         {
-                            e.Item1.Remove(operandNodes[k]);
+                            e.Input.Remove(operandNodes[k]);
                         }
                     }
 
@@ -174,7 +190,7 @@ namespace Crunch.Machine
 
                 if (j == multiplication)
                 {
-                    Juxtapose(e.Item1, juxtapose);
+                    Juxtapose(e.Input, juxtapose);
                 }
             }
         }
