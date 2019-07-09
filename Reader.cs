@@ -9,7 +9,7 @@ using Crunch.Machine;
 
 namespace Parse
 {
-    public abstract class Reader
+    public abstract class Reader<T>
     {
         public int Count => dict.Count;
 
@@ -95,6 +95,27 @@ namespace Parse
 
         private object Delist(LinkedList<object> list) => list.Count == 1 ? (object)list.First.Value : list;
 
+        protected readonly int OPEN = char.MaxValue - 1;
+        protected readonly int CLOSE = char.MaxValue - 2;
+
+        protected virtual string Next(ref string input, ref int i)
+        {
+            do
+            {
+                if (i >= input.Length || input[i].IsClosing())
+                {
+                    return ((char)CLOSE).ToString();
+                }
+                else if (input[i].IsOpening())
+                {
+                    return ((char)OPEN).ToString();
+                }
+            }
+            while (input[i++] == ' ');
+
+            return input[i - 1].ToString();
+        }
+
         private LinkedList<object> Parse(ref string input, ref int i, LinkedList<object> list = null)
         {
             Print.Log("parsing " + input);
@@ -107,406 +128,71 @@ namespace Parse
 
             HashSet<char> terminaters = new HashSet<char>() { '(', ')' };
             HashSet<char> ignored = new HashSet<char>() { ' ' };
-
-            string buffer1 = "";
-            string buffer2 = "";
-            Operator lastOperation = null;
-
-            TrieContains search = TrieContains.Partial;
-            Operator temp = null;
             
-            //while (i <= input.Length)
             while (true)
             {
-                //int command = 0;
-                int OPEN = -1;
-                int CLOSE = -2;
-
-                int c = -5;
-
                 do
                 {
-                    if (search == TrieContains.Full)
+                    string c = Next(ref input, ref i);
+
+                    //if (i < input.Length && input[i].IsOpening())
+                    if (c == OPEN.ToString())
                     {
-                        buffer1 += buffer2;
-                        lastOperation = temp;
+                        Print.Log("open");
+
+                        i++;
+                        LinkedList<object> e = Parse(ref input, ref i);
+                        quantity.Input.AddLast(Delist(e));
                     }
-                    else if (search == TrieContains.No)
+                    else if (c == CLOSE.ToString())
+                    //else if (i >= input.Length || input[i].IsClosing())
                     {
-                        if (lastOperation != null)
+                        Evaluator<object> e = quantity;
+                        Print.Log("close", e.Input.Count);
+                        LinkedListNode<object> a = e.Input.First;
+                        while (a != null)
                         {
-                            lastOperation = null;
+                            Print.Log(a.Value, a.Value?.GetType());
+                            a = a.Next;
                         }
-                        else if (buffer2.Length > 0)
-                        {
-                            buffer1 += buffer2[0].ToString();
-                            i++;
-                        }
+                        Print.Log("\n");
 
-                        i -= buffer2.Length;
-                    }
-
-                    if (search != TrieContains.Partial)
-                    {
-                        buffer2 = "";
-                    }
-                    //Print.Log(buffer2, i < input.Length ? input[i].ToString() : "i out of bounds");
-
-                    do
-                    {
-                        if (i >= input.Length)
-                        {
-                            c = CLOSE;
-                        }
-                        else
-                        {
-                            c = input[i];//.ToString();
-
-                            if (((char)c).IsOpening())
-                            {
-                                c = OPEN;
-                            }
-                            else if (((char)c).IsClosing())
-                            {
-                                c = CLOSE;
-                            }
-                            else
-                            {
-                                i++;
-                            }
-                        }
-                    }
-                    while ((char)c == ' ');
-
-                    //command = 0;
-                    //if (c[0].IsOpening() || c[0].IsClosing())
-                    if (c < 0)
-                    {
-                        search = TrieContains.No;
+                        i++;
+                        Close(e, multiplication, juxtapose);
+                        return e.Input;
                     }
                     else
                     {
-                        buffer2 += (char)c;
+                        string next = c;
 
-                        // If we haven't found an operator yet, ignore what we have (any partial matches are in buffer2)
-                        // Otherwise we're storing the matched part of the operator in buffer1 
-                        search = Operations.Contains((lastOperation == null ? "" : buffer1) + buffer2, out temp);
-                    }
-                }
-                // Break out of the loop when the following conditions are met
-                //      If the search is not a partial match, we have reached a definite yes or no, so we need to do something
-                //      If we have definitely found an operator, we may need to flush an operand
-                //      If we found an operator and were looking for a longer one, we didn't find it - flush the operator we did find
-                // If none of these are true, keep looping
-                while (!(search != TrieContains.Partial && (search == TrieContains.Full || lastOperation != null || buffer2.Length == 0)));
-
-                Print.Log("exited", buffer1, buffer2, search);
-
-                // Flush operations unless we might still be looking
-
-                if (search != TrieContains.Full)
-                {
-                    if (lastOperation != null)
-                    {
-                        Print.Log("found operation", buffer1, buffer2);
-
-                        int index = IndexOf(buffer1);
-                        LinkedListNode<object> node = AddOperator(quantity, lastOperation, index, buffer1);
-                        quantity.Input.AddLast(node);
-
-                        buffer1 = "";
-                    }
-
-                    if (buffer2.Length > 0)
-                    {
-                        continue;
-                    }
-                }
-
-                if (!(search == TrieContains.No && lastOperation != null) && buffer1 != "")
-                {
-                    Print.Log("found operand");
-                    foreach (object o in ParseOperandString(buffer1))
-                    {
-                        Print.Log("\t" + o);
-                        quantity.Input.AddLast(o);
-                    }
-
-                    buffer1 = "";
-                }
-
-                if (c < 0)
-                {
-                    i++;
-                }
-                
-                if (c == OPEN)
-                {
-                    Print.Log("open");
-
-                    LinkedList<object> e = Parse(ref input, ref i);
-                    quantity.Input.AddLast(Delist(e));
-                    //Close(e, multiplication, juxtapose);
-                    //quantity.Input.AddLast(Delist(e.Input));
-                }
-                else if (c == CLOSE)
-                {
-                    Evaluator<object> e = quantity;
-                    Print.Log("close", e.Input.Count);
-                    LinkedListNode<object> a = e.Input.First;
-                    while (a != null)
-                    {
-                        Print.Log(a.Value, a.Value?.GetType());
-                        a = a.Next;
-                    }
-                    Print.Log("\n");
-
-                    Close(e, multiplication, juxtapose);
-                    return e.Input;
-                }
-            }
-
-            //return quantity.Input;
-            //throw new Exception("Error parsing math");
-        }
-
-        public LinkedList<object> Parse1(string input)
-        {
-            Print.Log("parsing " + input);
-            Stack<Evaluator<object>> quantities = new Stack<Evaluator<object>>();
-
-            Operator juxtapose;
-            Operations.Contains("*", out juxtapose);
-            int multiplication = IndexOf("*");
-
-            //input = "(" + input;
-            input = "(" + input + ")";
-
-            HashSet<char> terminaters = new HashSet<char>() { '(', ')' };
-            HashSet<char> ignored = new HashSet<char>() { ' ' };
-            
-            string buffer1 = "";
-            string buffer2 = "";
-            Operator lastOperation = null;
-
-            TrieContains search = TrieContains.Partial;
-            Operator temp = null;
-
-            for (int i = 0; i <= input.Length; )
-            {
-                //int command = 0;
-                int OPEN = -1;
-                int CLOSE = -2;
-
-                int c = -5;
-
-                do
-                {
-                    if (search == TrieContains.Full)
-                    {
-                        buffer1 += buffer2;
-                        lastOperation = temp;
-                    }
-                    else if (search == TrieContains.No)
-                    {
-                        if (lastOperation != null)
+                        Operator temp1;
+                        if (Operations.Contains(next, out temp1) == TrieContains.Full)
                         {
-                            lastOperation = null;
-                        }
-                        else if (buffer2.Length > 0)
-                        {
-                            buffer1 += buffer2[0].ToString();
-                            i++;
-                        }
+                            Print.Log("found operator", next);
 
-                        i -= buffer2.Length;
-                    }
-
-                    if (search != TrieContains.Partial)
-                    {
-                        buffer2 = "";
-                    }
-                    //Print.Log(i < input.Length ? input[i].ToString() : "i out of bounds");
-
-                    do
-                    {
-                        if (i >= input.Length)
-                        {
-                            c = CLOSE;
+                            int index = IndexOf(next);
+                            LinkedListNode<object> node = AddOperator(quantity, temp1, index, next);
+                            quantity.Input.AddLast(node);
                         }
                         else
                         {
-                            c = input[i];//.ToString();
-
-                            if (((char)c).IsOpening())
+                            Print.Log("found operand", next);
+                            foreach (object o in ParseOperandString(next))
                             {
-                                c = OPEN;
-                            }
-                            else if (((char)c).IsClosing())
-                            {
-                                c = CLOSE;
-                            }
-                            else
-                            {
-                                i++;
+                                Print.Log("\t" + o);
+                                quantity.Input.AddLast(o);
                             }
                         }
                     }
-                    while ((char)c == ' ');
-                    
-                    //command = 0;
-                    //if (c[0].IsOpening() || c[0].IsClosing())
-                    if (c < 0)
-                    {
-                        search = TrieContains.No;
-                    }
-                    else
-                    {
-                        buffer2 += (char)c;
-
-                        // If we haven't found an operator yet, ignore what we have (any partial matches are in buffer2)
-                        // Otherwise we're storing the matched part of the operator in buffer1 
-                        search = Operations.Contains((lastOperation == null ? "" : buffer1) + buffer2, out temp);
-                    }
                 }
-                // Break out of the loop when the following conditions are met
-                //      If the search is not a partial match, we have reached a definite yes or no, so we need to do something
-                //      If we have definitely found an operator, we may need to flush an operand
-                //      If we found an operator and were looking for a longer one, we didn't find it - flush the operator we did find
-                // If none of these are true, keep looping
-                while (!(search != TrieContains.Partial && (search == TrieContains.Full || lastOperation != null || buffer2.Length == 0)));
-
-                Print.Log("exited", buffer1, buffer2, search);
-
-                // Flush operations unless we might still be looking
-
-                if (search != TrieContains.Full)
-                {
-                    if (lastOperation != null)
-                    {
-                        Print.Log("found operation", buffer1, buffer2);
-
-                        int index = IndexOf(buffer1);
-                        LinkedListNode<object> node = AddOperator(quantities.Peek(), lastOperation, index, buffer1);
-                        quantities.Peek().Input.AddLast(node);
-
-                        buffer1 = "";
-                    }
-
-                    if (buffer2.Length > 0)
-                    {
-                        continue;
-                    }
-                }
-
-                if (!(search == TrieContains.No && lastOperation != null) && buffer1 != "")
-                {
-                    Print.Log("found operand");
-                    foreach (object o in ParseOperandString(buffer1))
-                    {
-                        Print.Log("\t" + o);
-                        quantities.Peek().Input.AddLast(o);
-                    }
-
-                    buffer1 = "";
-                }
-
-                if (c < 0)
-                {
-                    i++;
-                }
-
-                if (c == OPEN)
-                {
-                    Print.Log("open");
-                    quantities.Push(new Evaluator<object>(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
-                }
-                else if (c == CLOSE)
-                {
-                    Evaluator<object> e = quantities.Pop();
-                    Print.Log("close", e.Input.Count);
-                    LinkedListNode<object> a = e.Input.First;
-                    while (a != null)
-                    {
-                        Print.Log(a.Value, a.Value?.GetType());
-                        a = a.Next;
-                    }
-                    Print.Log("\n");
-
-                    Close(e, multiplication, juxtapose);
-
-                    if (quantities.Count == 0)
-                    {
-                        if (i + 1 >= input.Length)
-                        {
-                            return e.Input;
-                        }
-                        quantities.Push(new Evaluator<object>(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
-                    }
-
-                    quantities.Peek().Input.AddLast(e.Input);
-                }
-
-                if (i + 1 == input.Length)
-                {
-                    for (int j = 0; j < quantities.Count; j++)
-                    {
-                        input += ")";
-                    }
-                }
-            }
-
-            throw new Exception("Error parsing math");
-        }
-
-        public LinkedList<object> Parse(List<string> input)
-        {
-            LinkedList<object> list = new LinkedList<object>();
-
-            for (int i = 0; i < input.Count;)
-            {
-                list = Parse(ref input, ref i);
-            }
-
-            return list;
-        }
-
-        public LinkedList<object> test(ref List<string> input, ref int i)
-        {
-            string c = "";
-            Evaluator<object> quantity = null;
-
-            while (true)
-            {
-                if (i >= input.Count || input[i][0].IsClosing())
-                {
-                    // Close what we're working on
-                    Evaluator<object> e = quantity;
-                    Close(e, multiplication, juxtapose);
-                    return e.Input;
-                }
-                else if (input[i][0].IsOpening())
-                {
-                    // Open a new one
-                    Print.Log("open");
-                    quantity.Input.AddLast(Delist(Parse(ref input, ref i)));
-                }
-                else
-                {
-                    c = input[i];
-                }
+                while (true);
             }
         }
 
-        public void test1(ref List<string> input, ref int i)
-        {
-
-        }
-
-        public LinkedList<object> Parse(ref List<string> input, ref int i)
+        private LinkedList<object> Parse(ref List<string> input, ref int i)
         {
             string parsing = "parsing |";
-            foreach(string s in input)
+            foreach (string s in input)
             {
                 parsing += s + "|";
             }
@@ -521,6 +207,9 @@ namespace Parse
             HashSet<char> terminaters = new HashSet<char>() { '(', ')' };
             HashSet<char> ignored = new HashSet<char>() { ' ' };
 
+            string OPEN = "-1";
+            string CLOSE = "-2";
+
             while (i <= input.Count)
             {
                 string c = "";
@@ -529,23 +218,11 @@ namespace Parse
                 {
                     if (i >= input.Count || input[i][0].IsClosing())
                     {
-                        Evaluator<object> e = quantity;
-                        Print.Log("close", e.Input.Count);
-                        LinkedListNode<object> a = e.Input.First;
-                        while (a != null)
-                        {
-                            Print.Log(a.Value, a.Value?.GetType());
-                            a = a.Next;
-                        }
-                        Print.Log("\n");
-
-                        Close(e, multiplication, juxtapose);
-                        return e.Input;
+                        c = CLOSE;
                     }
                     else if (input[i][0].IsOpening())
                     {
-                        Print.Log("open");
-                        quantity.Input.AddLast(Delist(Parse(ref input, ref i)));
+                        c = OPEN;
                     }
                     else
                     {
@@ -574,6 +251,29 @@ namespace Parse
                         Print.Log("\t" + o);
                         quantity.Input.AddLast(o);
                     }
+                }
+
+                if (c == OPEN)
+                {
+                    Print.Log("open");
+
+                    LinkedList<object> e = Parse(ref input, ref i);
+                    quantity.Input.AddLast(Delist(e));
+                }
+                else if (c == CLOSE)
+                {
+                    Evaluator<object> e = quantity;
+                    Print.Log("close", e.Input.Count);
+                    LinkedListNode<object> a = e.Input.First;
+                    while (a != null)
+                    {
+                        Print.Log(a.Value, a.Value?.GetType());
+                        a = a.Next;
+                    }
+                    Print.Log("\n");
+
+                    Close(e, multiplication, juxtapose);
+                    return e.Input;
                 }
             }
 
@@ -707,5 +407,369 @@ namespace Parse
                 Operations = operations;
             }
         }
+
+        /*public LinkedList<object> Parse1(string input)
+        {
+            Print.Log("parsing " + input);
+            Stack<Evaluator<object>> quantities = new Stack<Evaluator<object>>();
+
+            Operator juxtapose;
+            Operations.Contains("*", out juxtapose);
+            int multiplication = IndexOf("*");
+
+            //input = "(" + input;
+            input = "(" + input + ")";
+
+            HashSet<char> terminaters = new HashSet<char>() { '(', ')' };
+            HashSet<char> ignored = new HashSet<char>() { ' ' };
+
+            string buffer1 = "";
+            string buffer2 = "";
+            Operator lastOperation = null;
+
+            TrieContains search = TrieContains.Partial;
+            Operator temp = null;
+
+            for (int i = 0; i <= input.Length;)
+            {
+                //int command = 0;
+                int OPEN = -1;
+                int CLOSE = -2;
+
+                int c = -5;
+
+                do
+                {
+                    if (search == TrieContains.Full)
+                    {
+                        buffer1 += buffer2;
+                        lastOperation = temp;
+                    }
+                    else if (search == TrieContains.No)
+                    {
+                        if (lastOperation != null)
+                        {
+                            lastOperation = null;
+                        }
+                        else if (buffer2.Length > 0)
+                        {
+                            buffer1 += buffer2[0].ToString();
+                            i++;
+                        }
+
+                        i -= buffer2.Length;
+                    }
+
+                    if (search != TrieContains.Partial)
+                    {
+                        buffer2 = "";
+                    }
+                    //Print.Log(i < input.Length ? input[i].ToString() : "i out of bounds");
+
+                    do
+                    {
+                        if (i >= input.Length)
+                        {
+                            c = CLOSE;
+                        }
+                        else
+                        {
+                            c = input[i];//.ToString();
+
+                            if (((char)c).IsOpening())
+                            {
+                                c = OPEN;
+                            }
+                            else if (((char)c).IsClosing())
+                            {
+                                c = CLOSE;
+                            }
+                            else
+                            {
+                                i++;
+                            }
+                        }
+                    }
+                    while ((char)c == ' ');
+
+                    //command = 0;
+                    //if (c[0].IsOpening() || c[0].IsClosing())
+                    if (c < 0)
+                    {
+                        search = TrieContains.No;
+                    }
+                    else
+                    {
+                        buffer2 += (char)c;
+
+                        // If we haven't found an operator yet, ignore what we have (any partial matches are in buffer2)
+                        // Otherwise we're storing the matched part of the operator in buffer1 
+                        search = Operations.Contains((lastOperation == null ? "" : buffer1) + buffer2, out temp);
+                    }
+                }
+                // Break out of the loop when the following conditions are met
+                //      If the search is not a partial match, we have reached a definite yes or no, so we need to do something
+                //      If we have definitely found an operator, we may need to flush an operand
+                //      If we found an operator and were looking for a longer one, we didn't find it - flush the operator we did find
+                // If none of these are true, keep looping
+                while (!(search != TrieContains.Partial && (search == TrieContains.Full || lastOperation != null || buffer2.Length == 0)));
+
+                Print.Log("exited", buffer1, buffer2, search);
+
+                // Flush operations unless we might still be looking
+
+                if (search != TrieContains.Full)
+                {
+                    if (lastOperation != null)
+                    {
+                        Print.Log("found operation", buffer1, buffer2);
+
+                        int index = IndexOf(buffer1);
+                        LinkedListNode<object> node = AddOperator(quantities.Peek(), lastOperation, index, buffer1);
+                        quantities.Peek().Input.AddLast(node);
+
+                        buffer1 = "";
+                    }
+
+                    if (buffer2.Length > 0)
+                    {
+                        continue;
+                    }
+                }
+
+                if (!(search == TrieContains.No && lastOperation != null) && buffer1 != "")
+                {
+                    Print.Log("found operand");
+                    foreach (object o in ParseOperandString(buffer1))
+                    {
+                        Print.Log("\t" + o);
+                        quantities.Peek().Input.AddLast(o);
+                    }
+
+                    buffer1 = "";
+                }
+
+                if (c < 0)
+                {
+                    i++;
+                }
+
+                if (c == OPEN)
+                {
+                    Print.Log("open");
+                    quantities.Push(new Evaluator<object>(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
+                }
+                else if (c == CLOSE)
+                {
+                    Evaluator<object> e = quantities.Pop();
+                    Print.Log("close", e.Input.Count);
+                    LinkedListNode<object> a = e.Input.First;
+                    while (a != null)
+                    {
+                        Print.Log(a.Value, a.Value?.GetType());
+                        a = a.Next;
+                    }
+                    Print.Log("\n");
+
+                    Close(e, multiplication, juxtapose);
+
+                    if (quantities.Count == 0)
+                    {
+                        if (i + 1 >= input.Length)
+                        {
+                            return e.Input;
+                        }
+                        quantities.Push(new Evaluator<object>(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
+                    }
+
+                    quantities.Peek().Input.AddLast(e.Input);
+                }
+
+                if (i + 1 == input.Length)
+                {
+                    for (int j = 0; j < quantities.Count; j++)
+                    {
+                        input += ")";
+                    }
+                }
+            }
+
+            throw new Exception("Error parsing math");
+        }*/
+
+        /*private LinkedList<object> Parse2(ref string input, ref int i, LinkedList<object> list = null)
+        {
+            Print.Log("parsing " + input);
+
+            Operator juxtapose;
+            Operations.Contains("*", out juxtapose);
+            int multiplication = IndexOf("*");
+
+            Evaluator<object> quantity = new Evaluator<object>(list ?? new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]);
+
+            HashSet<char> terminaters = new HashSet<char>() { '(', ')' };
+            HashSet<char> ignored = new HashSet<char>() { ' ' };
+
+            string buffer1 = "";
+            string buffer2 = "";
+            Operator lastOperation = null;
+
+            TrieContains search = TrieContains.Partial;
+            Operator temp = null;
+
+            //while (i <= input.Length)
+            while (true)
+            {
+                //int command = 0;
+                int OPEN = -1;
+                int CLOSE = -2;
+
+                int c = -5;
+
+                do
+                {
+                    if (search == TrieContains.Full)
+                    {
+                        buffer1 += buffer2;
+                        lastOperation = temp;
+                    }
+                    else if (search == TrieContains.No)
+                    {
+                        if (lastOperation != null)
+                        {
+                            lastOperation = null;
+                        }
+                        else if (buffer2.Length > 0)
+                        {
+                            buffer1 += buffer2[0].ToString();
+                            i++;
+                        }
+
+                        i -= buffer2.Length;
+                    }
+
+                    if (search != TrieContains.Partial)
+                    {
+                        buffer2 = "";
+                    }
+                    //Print.Log(buffer2, i < input.Length ? input[i].ToString() : "i out of bounds");
+
+                    do
+                    {
+                        if (i >= input.Length)
+                        {
+                            c = CLOSE;
+                        }
+                        else
+                        {
+                            c = input[i];//.ToString();
+
+                            if (((char)c).IsOpening())
+                            {
+                                c = OPEN;
+                            }
+                            else if (((char)c).IsClosing())
+                            {
+                                c = CLOSE;
+                            }
+                            else
+                            {
+                                i++;
+                            }
+                        }
+                    }
+                    while ((char)c == ' ');
+
+                    //command = 0;
+                    //if (c[0].IsOpening() || c[0].IsClosing())
+                    if (c < 0)
+                    {
+                        search = TrieContains.No;
+                    }
+                    else
+                    {
+                        buffer2 += (char)c;
+
+                        // If we haven't found an operator yet, ignore what we have (any partial matches are in buffer2)
+                        // Otherwise we're storing the matched part of the operator in buffer1 
+                        search = Operations.Contains((lastOperation == null ? "" : buffer1) + buffer2, out temp);
+                    }
+                }
+                // Break out of the loop when the following conditions are met
+                //      If the search is not a partial match, we have reached a definite yes or no, so we need to do something
+                //      If we have definitely found an operator, we may need to flush an operand
+                //      If we found an operator and were looking for a longer one, we didn't find it - flush the operator we did find
+                // If none of these are true, keep looping
+                while (!(search != TrieContains.Partial && (search == TrieContains.Full || lastOperation != null || buffer2.Length == 0)));
+
+                Print.Log("exited", buffer1, buffer2, search);
+
+                // Flush operations unless we might still be looking
+
+                if (search != TrieContains.Full)
+                {
+                    if (lastOperation != null)
+                    {
+                        Print.Log("found operation", buffer1, buffer2);
+
+                        int index = IndexOf(buffer1);
+                        LinkedListNode<object> node = AddOperator(quantity, lastOperation, index, buffer1);
+                        quantity.Input.AddLast(node);
+
+                        buffer1 = "";
+                    }
+
+                    if (buffer2.Length > 0)
+                    {
+                        continue;
+                    }
+                }
+
+                if (!(search == TrieContains.No && lastOperation != null) && buffer1 != "")
+                {
+                    Print.Log("found operand");
+                    foreach (object o in ParseOperandString(buffer1))
+                    {
+                        Print.Log("\t" + o);
+                        quantity.Input.AddLast(o);
+                    }
+
+                    buffer1 = "";
+                }
+
+                if (c < 0)
+                {
+                    i++;
+                }
+
+                if (c == OPEN)
+                {
+                    Print.Log("open");
+
+                    LinkedList<object> e = Parse(ref input, ref i);
+                    quantity.Input.AddLast(Delist(e));
+                    //Close(e, multiplication, juxtapose);
+                    //quantity.Input.AddLast(Delist(e.Input));
+                }
+                else if (c == CLOSE)
+                {
+                    Evaluator<object> e = quantity;
+                    Print.Log("close", e.Input.Count);
+                    LinkedListNode<object> a = e.Input.First;
+                    while (a != null)
+                    {
+                        Print.Log(a.Value, a.Value?.GetType());
+                        a = a.Next;
+                    }
+                    Print.Log("\n");
+
+                    Close(e, multiplication, juxtapose);
+                    return e.Input;
+                }
+            }
+
+            //return quantity.Input;
+            //throw new Exception("Error parsing math");
+        }*/
     }
 }

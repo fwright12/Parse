@@ -57,6 +57,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CharReader.cs" />
     <Compile Include="Reader - Copy.cs" />
     <Compile Include="Reader.cs" />
     <Compile Include="StringClassification.cs" />
