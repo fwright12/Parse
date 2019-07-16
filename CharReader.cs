@@ -5,40 +5,101 @@ using System.Text;
 using System.Threading.Tasks;
 
 using System.Extensions;
-using Crunch.Machine;
+//using Crunch.Machine;
 
+#if DEBUG
 namespace Parse
 {
-    public abstract class Reader : Reader<char>
+    using Operator = Crunch.Machine.Operator;
+
+    public abstract class Reader<TOutput> : Reader<string, TOutput>
     {
-        public Reader(params KeyValuePair<string, Operator>[][] data) : base(data) { }
+        new protected Trie<Operator<TOutput>> Operations => (Trie<Operator<TOutput>>)base.Operations;
 
-        string buffer1 = "";
-        string buffer2 = "";
-        Operator lastOperation = null;
-
-        TrieContains search = TrieContains.Partial;
-        Operator temp = null;
-
-        int c = -5;
-
-        protected override string Next(ref string input, ref int i)
+        public Reader(params KeyValuePair<string, Operator<TOutput>>[][] data) : base(new Trie<Operator<TOutput>>(), data)
         {
-            string next = "";
-            //return next;
+            Opening = new HashSet<string> { "(", "{", "[" };
+            Closing = new HashSet<string> { ")", "}", "]" };
+            Ignore = new HashSet<string> { " " };
+        }
+
+        private string buffer1 = "";
+        private string buffer2 = "";
+        private Operator<TOutput> lastOperation = null;
+        private Operator<TOutput> temp = null;
+
+        public object Parse(string input)
+        {
+            return Parse(Next(input));
+        }
+
+        /*public LinkedList<object> Parse(string input) //=> Parse(input.ToList<char>());
+        {
+            Print.Log("divided");
+            foreach (string s in Next1(input.ToList<char>()))
+            {
+                Print.Log(s);
+            }
+
+            return Parse(Next1(input.ToList<char>()));
+
+            IList<char> chars = input.ToList<char>();
+            List<string> list = new List<string>();
+
+            foreach(string s in Next1(chars))
+            {
+                list.Add(s);
+            }
+
+            return Parse(list);
+        }*/
+
+        protected bool NextChar(ref string input, ref int i, out char next)
+        {
+            next = default;
+
             do
             {
-                c = base.Next(ref input, ref i)[0];
+                if (i >= input.Length)
+                {
+                    return true;
+                }
 
-                bool done = false;
+                next = input[i];
 
+                if (Closing.Contains(input[i].ToString()) || Opening.Contains(input[i].ToString()))
+                {
+                    return true;
+                }
+            }
+            while (Ignore.Contains(input[i++].ToString()));
+
+            next = input[i - 1];//.ToString();
+            return false;
+        }
+
+        protected IEnumerable<string> Next(string input)
+        {
+            bool special = false;
+
+            for (int i = 0; !(buffer1.Length == 0 && buffer2.Length == 0) || i < input.Length; )
+            {
+                TrieContains search;
+
+                char next;
+                special = NextChar(ref input, ref i, out next);
 
                 //Print.Log(buffer2, i < input.Length ? input[i].ToString() : "i out of bounds");
                 //Print.Log(search, buffer1, buffer2);
 
-
-                if (c == OPEN || c == CLOSE)
+                if (special)
                 {
+                    // We have emptied both buffers, so we're done with everything up to this point
+                    if (buffer1.Length == 0 && buffer2.Length == 0 && i++ < input.Length)
+                    {
+                        yield return next.ToString();
+                    }
+
                     if (lastOperation != null || buffer2.Length > 0)
                     {
                         search = TrieContains.No;
@@ -47,59 +108,22 @@ namespace Parse
                     {
                         search = TrieContains.Full;
                     }
-
-                    /*if (lastOperation != null)
-                    {
-                        search = TrieContains.No;
-                    }
-                    else
-                    {
-                        search = TrieContains.Full;
-                        if (buffer2.Length > 0)
-                        {
-                            lastOperation = new Operator(null, null, null);
-                        }
-                    }*/
-
-                    // We have emptied both buffers, so we're done with everything up to this point
-                    if (buffer1.Length == 0 && buffer2.Length == 0)
-                    {
-                        return c.ToString();
-                    }
-                    else
-                    {
-                        c = -5;
-                    }
                 }
                 else
                 {
-                    buffer2 += (char)c;
+                    buffer2 += next;
 
                     // If we haven't found an operator yet, ignore what we have (any partial matches are in buffer2)
                     // Otherwise we're storing the matched part of the operator in buffer1 
-                    search = Operations.Contains((lastOperation == null ? "" : buffer1) + buffer2, out temp);
+                    search = Operations.TryGetValue1((lastOperation == null ? "" : buffer1) + buffer2, out temp);
                 }
-                /*}
-                //while (true);
-                // If any of the following are true, break out of the loop:
-                while (!(
-                // Need to flush an operand
-                (search == TrieContains.Full && lastOperation == null && buffer1 != "") ||
-                // Need to flush an operator
-                (search == TrieContains.No && lastOperation != null) ||
-                // (Opening or closing) and collected everything before
-                ((c == OPEN || c == CLOSE) && buffer2.Length == 0)));*/
 
-                //Print.Log("exited", buffer1, buffer2, search);
-
-                //  Need to flush an operator (no longer an operation, but came across one)
-                done = (search == TrieContains.No && lastOperation != null) ||
-            // Need to flush an operand (found an operator, first one, something to flush)
-            (search == TrieContains.Full && lastOperation == null && buffer1 != "");
-
-                if (done)
+                    // Need to flush an operator (no longer an operation, but came across one)
+                if ((search == TrieContains.No && lastOperation != null) ||
+                    // Need to flush an operand (found an operator, first one, something to flush)
+                    (search == TrieContains.Full && lastOperation == null && buffer1 != ""))
                 {
-                    next = buffer1;
+                    yield return buffer1;
                     buffer1 = "";
                 }
 
@@ -127,15 +151,8 @@ namespace Parse
                 {
                     buffer2 = "";
                 }
-
-                if (done)
-                {
-                    break;
-                }
             }
-            while (true);
-
-            return next;
         }
     }
 }
+#endif

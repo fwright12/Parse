@@ -61,7 +61,7 @@ namespace Crunch.Machine
             Stack<Evaluator<object>> quantities = new Stack<Evaluator<object>>();
 
             Operator juxtapose;
-            Operations.Contains("*", out juxtapose);
+            Operations.TryGetValue("*", out juxtapose);
             int multiplication = IndexOf("*");
 
             input = "(" + input + ")";
@@ -220,7 +220,7 @@ namespace Crunch.Machine
             for (int i = 0; i < input.Length; i++)
             {
                 Operator temp;
-                TrieContains search = Operations.Contains(input.Substring(0, i + 1), out temp);
+                TrieContains search = Operations.TryGetValue1(input.Substring(0, i + 1), out temp);
                 //At this point there is no operation that starts like this
                 if (search == TrieContains.No)
                 {
