@@ -58,6 +58,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CharReader.cs" />
+    <Compile Include="InPlaceReader.cs" />
     <Compile Include="Reader - Copy.cs" />
     <Compile Include="Reader.cs" />
     <Compile Include="StringClassification.cs" />

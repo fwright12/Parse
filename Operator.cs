@@ -30,25 +30,26 @@ namespace Crunch.Machine
 
 namespace Parse
 {
+    //using TargetFunction = Func<LinkedListNode<object>, LinkedListNode<object>>;
+    using TargetFunction = Action<IOrdered<object>>;
+
     public delegate T FunctionWithVariableParamterCount<T>(params T[] operands);
     public enum ProcessingOrder { LeftToRight, RightToLeft }
 
     public class Operator<T>
     {
         public FunctionWithVariableParamterCount<T> Operate;
-        public Func<LinkedListNode<object>, LinkedListNode<object>>[] Targets;
+        public TargetFunction[] Targets;
         public ProcessingOrder Order;
 
-        protected Operator() { }
-
-        public Operator(FunctionWithVariableParamterCount<T> operate, params Func<LinkedListNode<object>, LinkedListNode<object>>[] targets)
+        public Operator(FunctionWithVariableParamterCount<T> operate, params TargetFunction[] targets)
         {
             Operate = operate;
             Targets = targets;
             Order = ProcessingOrder.LeftToRight;
         }
 
-        public Operator(FunctionWithVariableParamterCount<T> operate, ProcessingOrder order, params Func<LinkedListNode<object>, LinkedListNode<object>>[] targets) : this(operate, targets)
+        public Operator(FunctionWithVariableParamterCount<T> operate, ProcessingOrder order, params TargetFunction[] targets) : this(operate, targets)
         {
             Order = order;
         }
@@ -56,10 +57,10 @@ namespace Parse
 
     public class BinaryOperator<T> : Operator<T>
     {
-        public BinaryOperator(Func<T, T, T> func, Func<LinkedListNode<object>, LinkedListNode<object>> previous, Func<LinkedListNode<object>, LinkedListNode<object>> next) : base((o) => func(o[0], o[1]), previous, next) { }
+        //public BinaryOperator(Func<T, T, T> func, TargetFunction previous, TargetFunction next) : base((o) => func(o[0], o[1]), previous, next) { }
 
-        public BinaryOperator(Func<T, T, T> func, ProcessingOrder order, Func<LinkedListNode<object>, LinkedListNode<object>> previous, Func<LinkedListNode<object>, LinkedListNode<object>> next) : base((o) => func(o[0], o[1]), order, previous, next) { }
+        public BinaryOperator(Func<T, T, T> func, TargetFunction previous, TargetFunction next, ProcessingOrder order = ProcessingOrder.LeftToRight) : base((o) => func(o[0], o[1]), order, previous, next) { }
     }
 
-    public class UnaryOperator<T> : Operator<T> { public UnaryOperator(Func<T, T> func, Func<LinkedListNode<object>, LinkedListNode<object>> operand) : base((o) => func(o[0]), ProcessingOrder.RightToLeft, operand) { } }
+    public class UnaryOperator<T> : Operator<T> { public UnaryOperator(Func<T, T> func, TargetFunction operand) : base((o) => func(o[0]), ProcessingOrder.RightToLeft, operand) { } }
 }

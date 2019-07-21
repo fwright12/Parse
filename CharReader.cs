@@ -12,11 +12,11 @@ namespace Parse
 {
     using Operator = Crunch.Machine.Operator;
 
-    public abstract class Reader<TOutput> : Reader<string, TOutput>
+    public abstract class CharReader<TOutput> : Reader<string, TOutput>
     {
         new protected Trie<Operator<TOutput>> Operations => (Trie<Operator<TOutput>>)base.Operations;
 
-        public Reader(params KeyValuePair<string, Operator<TOutput>>[][] data) : base(new Trie<Operator<TOutput>>(), data)
+        public CharReader(params KeyValuePair<string, Operator<TOutput>>[][] data) : base(new Trie<Operator<TOutput>>(), data)
         {
             Opening = new HashSet<string> { "(", "{", "[" };
             Closing = new HashSet<string> { ")", "}", "]" };
@@ -28,31 +28,7 @@ namespace Parse
         private Operator<TOutput> lastOperation = null;
         private Operator<TOutput> temp = null;
 
-        public object Parse(string input)
-        {
-            return Parse(Next(input));
-        }
-
-        /*public LinkedList<object> Parse(string input) //=> Parse(input.ToList<char>());
-        {
-            Print.Log("divided");
-            foreach (string s in Next1(input.ToList<char>()))
-            {
-                Print.Log(s);
-            }
-
-            return Parse(Next1(input.ToList<char>()));
-
-            IList<char> chars = input.ToList<char>();
-            List<string> list = new List<string>();
-
-            foreach(string s in Next1(chars))
-            {
-                list.Add(s);
-            }
-
-            return Parse(list);
-        }*/
+        public TOutput Parse(string input) => Parse(Next(input));
 
         protected bool NextChar(ref string input, ref int i, out char next)
         {

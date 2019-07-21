@@ -5,28 +5,138 @@ using System.Text;
 using System.Threading.Tasks;
 
 using System.Extensions;
+using System.Collections;
 //using Crunch.Machine;
 
 #if DEBUG
 namespace Parse
 {
-    //using Operator = Crunch.Machine.Operator;
+    public interface IOrdered<T> : IEnumerator<T>
+    {
+        bool Move(int n);
+        bool MovePrev();
+
+        void Add(int n, T t);
+        bool Remove(int n);
+    }
+
+    public class LinkedListBiEnumerator<T> : IOrdered<T>
+    {
+        public T Current => Node == null ? default : Node.Value;
+        object IEnumerator.Current => throw new NotImplementedException();
+
+        private LinkedList<T> List;
+        private LinkedListNode<T> Node;
+        private bool begin;
+
+        public LinkedListBiEnumerator(LinkedList<T> list)
+        {
+            List = list;
+            begin = true;
+        }
+
+        public LinkedListBiEnumerator(LinkedListNode<T> node) : this(node.List)
+        {
+            Node = node;
+        }
+
+        private LinkedListBiEnumerator(LinkedListBiEnumerator<T> itr)
+        {
+            List = itr.List;
+            Node = itr.Node;
+            begin = itr.begin;
+        }
+
+        public void Add(int n, T t)
+        {
+            if (n == 0)
+            {
+                return;
+            }
+            
+            LinkedListBiEnumerator<T> itr = Node == null ? null : new LinkedListBiEnumerator<T>(Node);
+            if (itr == null || !itr.Move(n - Math.Sign(n)))
+            {
+                if (begin)
+                {
+                    List.AddFirst(t);
+                }
+                else
+                {
+                    List.AddLast(t);
+                }
+            }
+            else
+            {
+                if (n > 0)
+                {
+                    List.AddAfter(itr.Node, t);
+                }
+                else if (n < 0)
+                {
+                    List.AddBefore(itr.Node, t);
+                }
+            }
+        }
+
+        public void Dispose() { }
+
+        public bool Move(int n)
+        {
+            for (int i = 0; i < Math.Abs(n); i++)
+            {
+                if (n > 0)
+                {
+                    Node = Node == null && begin ? List.First : Node?.Next;
+                    begin = false;
+                }
+                else if (n < 0)
+                {
+                    Node = Node == null && !begin ? List.Last : Node?.Previous;
+                    begin = true;
+                }
+
+                if (Node == null)
+                {
+                    return false;
+                }
+            }
+
+            return !(n == 0 && Node == null);
+        }
+
+        public bool MoveNext() => Move(1);
+        public bool MovePrev() => Move(-1);
+
+        public bool Remove(int n)
+        {
+            LinkedListBiEnumerator<T> itr = new LinkedListBiEnumerator<T>(this);
+            if (!itr.Move(n))
+            {
+                return false;
+            }
+
+            List.Remove(itr.Node);
+            return true;
+        }
+
+        public void Reset()
+        {
+            Node = null;
+        }
+    }
 
     public abstract class Reader<TInput, TOutput>
     {
         public int Count => dict.Count;
 
-        //protected Trie<Operator> Operations;
         readonly protected IDictionary<TInput, Operator<TOutput>> Operations;
-        //protected IDictionary<TOperation, Operator> Operations;
 
         public HashSet<TInput> Opening;
         public HashSet<TInput> Closing;
         public HashSet<TInput> Ignore;
 
         private Dictionary<TInput, int> dict;
-        Operator<TOutput> juxtapose;
-        int multiplication => IndexOf((dynamic)"*");
 
         public Reader(params KeyValuePair<TInput, Operator<TOutput>>[][] data) : this(new Dictionary<TInput, Operator<TOutput>>()) { }
 
@@ -34,7 +144,7 @@ namespace Parse
         {
             Operations = operations;
             dict = new Dictionary<TInput, int>();
-
+            
             Opening = new HashSet<TInput>();
             Closing = new HashSet<TInput>();
             Ignore = new HashSet<TInput>();
@@ -51,8 +161,6 @@ namespace Parse
                     Insert(i, kvp.Key, kvp.Value);
                 }
             }
-
-            Operations.TryGetValue((dynamic)"*", out juxtapose);
         }
 
         public void Add(TInput symbol, Operator<TOutput> operation) => Insert(dict.Count, symbol, operation);
@@ -68,14 +176,16 @@ namespace Parse
 
         protected abstract IEnumerable<TOutput> ParseOperand(TInput operand);
 
-        public object Parse(IEnumerable<TInput> input)
-        {
-            object quantity = null;
+        protected virtual TOutput Juxtapose(IOrdered<object> expression) => throw new Exception();
 
-            IEnumerator<TInput> itr = Next(input).GetEnumerator();
+        public TOutput Parse(IEnumerable<TInput> input)
+        {
+            TOutput quantity = default;
+
+            IEnumerator<TInput> itr = input.GetEnumerator();
 
             string parsing = "parsing |";
-            foreach (TInput s in Next(input))
+            foreach (TInput s in input)
             {
                 parsing += s + "|";
             }
@@ -83,13 +193,6 @@ namespace Parse
 
             do
             {
-                if (quantity != null)
-                {
-                    //object o = Delist(quantity);
-                    //quantity = new LinkedList<object>();
-                    //quantity.AddFirst(o);
-                }
-
                 quantity = Parse(ref itr, quantity);
             }
             while (itr != null);
@@ -97,9 +200,7 @@ namespace Parse
             return quantity;
         }
 
-        //private object Delist(LinkedList<object> list) => list.First.Value; // list.Count == 1 ? (object)list.First.Value : list;
-
-        private IEnumerable<TInput> Next(IEnumerable<TInput> input)
+        /*private IEnumerable<TInput> Next(IEnumerable<TInput> input)
         {
             foreach(TInput t in input)
             {
@@ -108,35 +209,17 @@ namespace Parse
                     yield return t;
                 }
             }
-        }
-
-        /*private void Next(ref IEnumerator<T> itr, out T next)
-        {
-            next = default;
-
-            do
-            {
-                if (itr == null || !itr.MoveNext())
-                {
-                    itr = null;
-                    return;// Classification.Other;
-                }
-
-                next = itr.Current;
-            }
-            while (itr != null && Skip.Contains(next));
-
-            return;// Classification.Other;
         }*/
 
-        private object Parse(ref IEnumerator<TInput> itr, object firstInList = null)
+        private TOutput Parse(ref IEnumerator<TInput> itr, TOutput firstInList = default)
         {
-            LinkedList<object> list = new LinkedList<object>();
-            if (firstInList != null)
+            LinkedList<object> input = new LinkedList<object>();
+            if (!EqualityComparer<TOutput>.Default.Equals(default, firstInList))
             {
-                list.AddFirst(firstInList);
+                input.AddFirst(firstInList);
             }
-            Evaluator quantity = new Evaluator(list, new LinkedList<LinkedListNode<object>>[Count]);
+            LinkedList<LinkedListNode<object>>[] operations = new LinkedList<LinkedListNode<object>>[Count];
+            //Evaluator quantity = new Evaluator(list, new LinkedList<LinkedListNode<object>>[Count]);
 
             while (true)
             {
@@ -148,9 +231,9 @@ namespace Parse
                 if (itr == null || Closing.Contains(itr.Current))
                 //if (classified == Classification.Opening)
                 {
-                    Evaluator e = quantity;
-                    Print.Log("close", e.Input.Count);
-                    LinkedListNode<object> a = e.Input.First;
+                    //Evaluator e = quantity;
+                    Print.Log("close", input.Count);
+                    LinkedListNode<object> a = input.First;
                     while (a != null)
                     {
                         Print.Log(a.Value, a.Value?.GetType());
@@ -158,7 +241,7 @@ namespace Parse
                     }
                     Print.Log("\n");
 
-                    return Close(e);
+                    return Close(input, operations);
                     //return e.Input.First.Value;
                 }
                 //else if (classified == Classification.Closing)
@@ -166,7 +249,7 @@ namespace Parse
                 {
                     Print.Log("open");
 
-                    quantity.Input.AddLast(Parse(ref itr));
+                    input.AddLast(Parse(ref itr));
                     //LinkedList<object> e = Parse(ref itr);
                     //quantity.Input.AddLast(Delist(e));
                 }
@@ -185,22 +268,22 @@ namespace Parse
                         LinkedListNode<object> node = new LinkedListNode<object>(operation);
 
                         // Get the list of all of this type of operator (e.g. all instances of "+")
-                        if (quantity.Operations[index] == null)
+                        if (operations[index] == null)
                         {
-                            quantity.Operations[index] = new LinkedList<LinkedListNode<object>>();
+                            operations[index] = new LinkedList<LinkedListNode<object>>();
                         }
-                        var input = quantity.Operations[index];
+                        LinkedList<LinkedListNode<object>> list = operations[index];
 
                         if (operation.Order == ProcessingOrder.RightToLeft)
                         {
-                            input.AddFirst(node);
+                            list.AddFirst(node);
                         }
                         else
                         {
-                            input.AddLast(node);
+                            list.AddLast(node);
                         }
 
-                        quantity.Input.AddLast(node);
+                        input.AddLast(node);
                     }
                     else
                     {
@@ -209,109 +292,18 @@ namespace Parse
                         foreach (TOutput o in ParseOperand(next))
                         {
                             Print.Log("\t" + o);
-                            quantity.Input.AddLast(o);
+                            input.AddLast(o);
                         }
                     }
                 }
             }
         }
 
-        /*private LinkedList<object> Parse(ref List<string> input, ref int i)
+        private TOutput Close(LinkedList<object> input, LinkedList<LinkedListNode<object>>[] operations)
         {
-            string parsing = "parsing |";
-            foreach (string s in input)
+            for (int j = 0; j < operations.Length; j++)
             {
-                parsing += s + "|";
-            }
-            Print.Log(parsing);
-
-            Evaluator<object> quantity = new Evaluator<object>(new LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]);
-
-            Operator juxtapose;
-            Operations.TryGetValue("*", out juxtapose);
-            int multiplication = IndexOf("*");
-
-            HashSet<char> terminaters = new HashSet<char>() { '(', ')' };
-            HashSet<char> ignored = new HashSet<char>() { ' ' };
-
-            string OPEN = "-1";
-            string CLOSE = "-2";
-
-            while (i <= input.Count)
-            {
-                string c = "";
-
-                do
-                {
-                    if (i >= input.Count || input[i][0].IsClosing())
-                    {
-                        c = CLOSE;
-                    }
-                    else if (input[i][0].IsOpening())
-                    {
-                        c = OPEN;
-                    }
-                    else
-                    {
-                        c = input[i];
-                    }
-
-                    i++;
-                }
-                while (c[0] == ' ');
-
-                Operator temp;
-                if (Operations.TryGetValue(c, out temp) == TrieContains.Full)
-                {
-                    // Operator
-
-                    int index = IndexOf(c);
-                    LinkedListNode<object> node = AddOperator(quantity, temp, index, c);
-                    quantity.Input.AddLast(node);
-                }
-                else
-                {
-                    // Operand
-
-                    foreach (object o in ParseOperandString(c))
-                    {
-                        Print.Log("\t" + o);
-                        quantity.Input.AddLast(o);
-                    }
-                }
-
-                if (c == OPEN)
-                {
-                    Print.Log("open");
-
-                    LinkedList<object> e = Parse(ref input, ref i);
-                    quantity.Input.AddLast(Delist(e));
-                }
-                else if (c == CLOSE)
-                {
-                    Evaluator<object> e = quantity;
-                    Print.Log("close", e.Input.Count);
-                    LinkedListNode<object> a = e.Input.First;
-                    while (a != null)
-                    {
-                        Print.Log(a.Value, a.Value?.GetType());
-                        a = a.Next;
-                    }
-                    Print.Log("\n");
-
-                    Close(e, multiplication, juxtapose);
-                    return e.Input;
-                }
-            }
-
-            throw new Exception("Error parsing math");
-        }*/
-
-        private object Close(Evaluator e)
-        {
-            for (int j = 0; j < e.Operations.Length; j++)
-            {
-                LinkedList<LinkedListNode<object>> stack = e.Operations[j];
+                LinkedList<LinkedListNode<object>> stack = operations[j];
                 
                 while (stack?.Count > 0)
                 {
@@ -322,21 +314,19 @@ namespace Parse
                     }
                     Operator<TOutput> op = (Operator<TOutput>)node.Value;
                     
-                    LinkedListNode<object>[] operandNodes = new LinkedListNode<object>[op.Targets.Length];
-
+                    IOrdered<object>[] operandNodes = new IOrdered<object>[op.Targets.Length];
+                    
                     for (int k = 0; k < op.Targets.Length; k++)
                     {
-                        operandNodes[k] = op.Targets[k](node);
+                        operandNodes[k] = new LinkedListBiEnumerator<object>(node);
+                        op.Targets[k](operandNodes[k]);
                     }
 
                     TOutput[] operands = new TOutput[operandNodes.Length];
                     for (int k = 0; k < operands.Length; k++)
                     {
-                        operands[k] = (TOutput)operandNodes[k]?.Value;
-                        if (operandNodes[k] != null)
-                        {
-                            e.Input.Remove(operandNodes[k]);
-                        }
+                        operands[k] = (TOutput)operandNodes[k].Current;
+                        operandNodes[k].Remove(0);
                     }
 
                     Print.Log("operating", op.GetType(), operands.Length);
@@ -348,58 +338,19 @@ namespace Parse
 
                     node.Value = op.Operate(operands);
                 }
-
-                if (j == multiplication)
-                {
-                    Juxtapose(e.Input, juxtapose);
-                }
             }
 
-            return e.Input.First.Value;
+            if (input.Count == 0)
+            {
+                throw new Exception();
+            }
+
+            IOrdered<object> itr = new LinkedListBiEnumerator<object>(input);
+            //itr.MoveNext();
+            return Juxtapose(itr);
         }
 
-        private void Juxtapose(LinkedList<object> expression, Operator<TOutput> juxtapse)
-        {
-            LinkedListNode<object> node = expression.First;
-
-            while (node.Next != null)
-            {
-                if (node.Value is Operator<TOutput> || node.Next.Value is Operator<TOutput>)
-                {
-                    node = node.Next;
-                }
-                else
-                {
-                    node.Value = juxtapse.Operate((TOutput)node.Value, (TOutput)node.Next.Value);
-                    expression.Remove(node.Next);
-                }
-            }
-        }
-
-        /*private string Search(string input)
-        {
-            //Keep track of the end position of the longest possible operation we find
-            int operation = 0;
-            for (int i = 0; i < input.Length; i++)
-            {
-                Operator temp;
-                TrieContains search = Operations.TryGetValue(input.Substring(0, i + 1), out temp);
-                //At this point there is no operation that starts like this
-                if (search == TrieContains.No)
-                {
-                    break;
-                }
-                //We found an operation, but it might not be the longest one
-                if (search == TrieContains.Full)
-                {
-                    operation = i + 1;
-                }
-            }
-
-            return input.Substring(0, Math.Max(1, operation));
-        }*/
-
-        private class Evaluator
+        /*private class Evaluator
         {
             public LinkedList<object> Input;
             public LinkedList<LinkedListNode<object>>[] Operations;
@@ -409,7 +360,7 @@ namespace Parse
                 Input = input;
                 Operations = operations;
             }
-        }
+        }*/
     }
 }
 #endif
