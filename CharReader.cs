@@ -10,8 +10,6 @@ using System.Extensions;
 #if DEBUG
 namespace Parse
 {
-    using Operator = Crunch.Machine.Operator;
-
     public abstract class CharReader<TOutput> : Reader<string, TOutput>
     {
         new protected Trie<Operator<TOutput>> Operations => (Trie<Operator<TOutput>>)base.Operations;

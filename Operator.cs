@@ -31,7 +31,7 @@ namespace Crunch.Machine
 namespace Parse
 {
     //using TargetFunction = Func<LinkedListNode<object>, LinkedListNode<object>>;
-    using TargetFunction = Action<IOrdered<object>>;
+    using TargetFunction = Action<IEditEnumerator<object>>;
 
     public delegate T FunctionWithVariableParamterCount<T>(params T[] operands);
     public enum ProcessingOrder { LeftToRight, RightToLeft }

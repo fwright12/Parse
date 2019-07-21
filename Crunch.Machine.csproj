@@ -57,8 +57,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BiEnumeration.cs" />
     <Compile Include="CharReader.cs" />
+    <Compile Include="IList.cs" />
     <Compile Include="InPlaceReader.cs" />
+    <Compile Include="LinkedList.cs" />
     <Compile Include="Reader - Copy.cs" />
     <Compile Include="Reader.cs" />
     <Compile Include="StringClassification.cs" />
