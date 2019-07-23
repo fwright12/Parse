@@ -63,10 +63,6 @@ namespace Parse
 
         public T Parse(IEnumerable<T> input)
         {
-            T quantity = default;
-
-            IEnumerator<T> itr = input.GetEnumerator();
-
             string parsing = "parsing |";
             foreach (T s in input)
             {
@@ -74,49 +70,22 @@ namespace Parse
             }
             Print.Log(parsing);
 
-            do
-            {
-                quantity = Parse(ref itr, quantity);
-            }
-            while (itr != null);
+            Stack<Evaluator> quantities = new Stack<Evaluator>();
 
-            return quantity;
-        }
-
-        /*private IEnumerable<TInput> Next(IEnumerable<TInput> input)
-        {
-            foreach(TInput t in input)
-            {
-                if (!Ignore.Contains(t))
-                {
-                    yield return t;
-                }
-            }
-        }*/
-
-        private T Parse(ref IEnumerator<T> itr, T firstInList = default)
-        {
-            System.BiEnumerable.LinkedList<object> input = new System.BiEnumerable.LinkedList<object>();
-            if (!EqualityComparer<T>.Default.Equals(default, firstInList))
-            {
-                input.AddFirst(firstInList);
-            }
-            LinkedList<LinkedListNode<object>>[] operations = new LinkedList<LinkedListNode<object>>[Count];
-            //Evaluator quantity = new Evaluator(list, new LinkedList<LinkedListNode<object>>[Count]);
+            IEnumerator<T> itr = input.GetEnumerator();
+            quantities.Push(new Evaluator(new System.BiEnumerable.LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
 
             while (true)
             {
-                if (itr == null || !itr.MoveNext())
-                {
-                    itr = null;
-                }
+                Evaluator quantity = quantities.Peek();
 
-                if (itr == null || Closing.Contains(itr.Current))
-                //if (classified == Classification.Opening)
+                bool done = !itr.MoveNext();
+
+                if (done || Closing.Contains(itr.Current))
                 {
-                    //Evaluator e = quantity;
-                    Print.Log("close", input.Count);
-                    LinkedListNode<object> a = input.First;
+                    Evaluator e = quantities.Pop();
+                    Print.Log("close", e.Input.Count);
+                    LinkedListNode<object> a = e.Input.First;
                     while (a != null)
                     {
                         Print.Log(a.Value, a.Value?.GetType());
@@ -124,18 +93,30 @@ namespace Parse
                     }
                     Print.Log("\n");
 
-                    //Other.LinkedList<object> input1 = input;
-                    return Close(input, operations);
-                    //return e.Input.First.Value;
+                    T answer = Close(e);
+
+                    if (quantities.Count == 0)
+                    {
+                        if (done)
+                        {
+                            return answer;
+                        }
+                        else
+                        {
+                            System.BiEnumerable.LinkedList<object> front = new System.BiEnumerable.LinkedList<object>();
+                            front.AddFirst(answer);
+                            quantities.Push(new Evaluator(front, new LinkedList<LinkedListNode<object>>[Count]));
+                        }
+                    }
+                    else
+                    {
+                        quantities.Peek().Input.AddLast(answer);
+                    }
                 }
-                //else if (classified == Classification.Closing)
                 else if (Opening.Contains(itr.Current))
                 {
                     Print.Log("open");
-
-                    input.AddLast(Parse(ref itr));
-                    //LinkedList<object> e = Parse(ref itr);
-                    //quantity.Input.AddLast(Delist(e));
+                    quantities.Push(new Evaluator(new System.BiEnumerable.LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count]));
                 }
                 else
                 {
@@ -152,11 +133,11 @@ namespace Parse
                         LinkedListNode<object> node = new LinkedListNode<object>(operation);
 
                         // Get the list of all of this type of operator (e.g. all instances of "+")
-                        if (operations[index] == null)
+                        if (quantity.Operations[index] == null)
                         {
-                            operations[index] = new LinkedList<LinkedListNode<object>>();
+                            quantity.Operations[index] = new LinkedList<LinkedListNode<object>>();
                         }
-                        LinkedList<LinkedListNode<object>> list = operations[index];
+                        LinkedList<LinkedListNode<object>> list = quantity.Operations[index];
 
                         if (operation.Order == ProcessingOrder.RightToLeft)
                         {
@@ -167,7 +148,7 @@ namespace Parse
                             list.AddLast(node);
                         }
 
-                        input.AddLast(node);
+                        quantity.Input.AddLast(node);
                     }
                     else
                     {
@@ -176,18 +157,29 @@ namespace Parse
                         foreach (T o in ParseOperand(next))
                         {
                             Print.Log("\t" + o);
-                            input.AddLast(o);
+                            quantity.Input.AddLast(o);
                         }
                     }
                 }
             }
         }
 
-        private T Close(IOrdered<object> input, LinkedList<LinkedListNode<object>>[] operations)
+        /*private IEnumerable<TInput> Next(IEnumerable<TInput> input)
         {
-            for (int j = 0; j < operations.Length; j++)
+            foreach(TInput t in input)
             {
-                LinkedList<LinkedListNode<object>> stack = operations[j];
+                if (!Ignore.Contains(t))
+                {
+                    yield return t;
+                }
+            }
+        }*/
+
+        private T Close(Evaluator quantity)
+        {
+            for (int j = 0; j < quantity.Operations.Length; j++)
+            {
+                LinkedList<LinkedListNode<object>> stack = quantity.Operations[j];
 
                 while (stack?.Count > 0)
                 {
@@ -224,7 +216,7 @@ namespace Parse
                 }
             }
 
-            if (input.Count == 0)
+            if (quantity.Input.Count == 0)
             {
                 throw new Exception();
             }
@@ -232,20 +224,20 @@ namespace Parse
             //IOrdered<object> itr = new LinkedListBiEnumerator<object>(input);
             //itr.MoveNext();
             //Other.LinkedList<object> list = input;
-            return Juxtapose(input);
+            return Juxtapose(quantity.Input);
         }
 
-        /*private class Evaluator
+        private class Evaluator
         {
-            public LinkedList<object> Input;
+            public System.BiEnumerable.LinkedList<object> Input;
             public LinkedList<LinkedListNode<object>>[] Operations;
 
-            public Evaluator(LinkedList<object> input, LinkedList<LinkedListNode<object>>[] operations)
+            public Evaluator(System.BiEnumerable.LinkedList<object> input, LinkedList<LinkedListNode<object>>[] operations)
             {
                 Input = input;
                 Operations = operations;
             }
-        }*/
+        }
     }
 }
 #endif

@@ -45,6 +45,8 @@ namespace System.BiEnumerable
                 List.Insert(Math.Max(0, Math.Min(List.Count, Index + n)), t);
             }
 
+            public IEditEnumerator<T> Copy() => new Enumerator(this);
+
             public void Dispose() { }
 
             public bool Move(int n)
@@ -56,7 +58,7 @@ namespace System.BiEnumerable
             public bool MoveNext() => Move(1);
             public bool MovePrev() => Move(-1);
 
-            public bool Remove(int n)
+            public bool Remove(int n = 0)
             {
                 Enumerator itr = new Enumerator(this);
                 if (!itr.Move(n))

@@ -11,8 +11,9 @@ namespace System.BiEnumerable
 {
     public class LinkedList<T> : Collections.Generic.LinkedList<T>, IOrdered<T>
     {
-        IEditEnumerator<T> IEditEnumerable<T>.GetEnumerator() => new Enumerator(this);
+        new public IEditEnumerator<T> GetEnumerator() => new Enumerator(this);
         IBiEnumerator<T> IBiEnumerable<T>.GetEnumerator() => new Enumerator(this);
+        IEditEnumerator<T> IEditEnumerable<T>.GetEnumerator() => GetEnumerator();
 
         [Serializable]
         new public struct Enumerator : IEditEnumerator<T>
@@ -81,6 +82,8 @@ namespace System.BiEnumerable
                 }
             }
 
+            public IEditEnumerator<T> Copy() => new Enumerator(this);
+
             public void Dispose() { }
 
             public bool Move(int n)
@@ -110,7 +113,7 @@ namespace System.BiEnumerable
             public bool MoveNext() => Move(1);
             public bool MovePrev() => Move(-1);
 
-            public bool Remove(int n)
+            public bool Remove(int n = 0)
             {
                 Enumerator itr = new Enumerator(this);
                 if (!itr.Move(n))

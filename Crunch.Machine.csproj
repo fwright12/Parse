@@ -62,6 +62,7 @@
     <Compile Include="IList.cs" />
     <Compile Include="InPlaceReader.cs" />
     <Compile Include="LinkedList.cs" />
+    <Compile Include="OnePassReader.cs" />
     <Compile Include="Reader - Copy.cs" />
     <Compile Include="Reader.cs" />
     <Compile Include="StringClassification.cs" />

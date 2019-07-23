@@ -5,9 +5,10 @@ using System.Text;
 using System.Threading.Tasks;
 
 using System.Extensions;
+using Parse;
 
 #if DEBUG
-namespace Parse
+namespace OnePassReader
 {
     public abstract class Reader<TInput, TOutput>
     {
@@ -64,166 +65,6 @@ namespace Parse
         protected virtual TOutput Juxtapose(IEditEnumerator<object> expression) => throw new Exception();
 
         public TOutput Parse(IEditEnumerable<TInput> input)
-        {
-            //return Parse1(input);
-
-            System.BiEnumerable.LinkedList<object> list = new System.BiEnumerable.LinkedList<object>();
-            foreach(TInput t in input)
-            {
-                list.AddLast(t);
-            }
-            return Parse(list.GetEnumerator());
-            //return data[0][0].Value.Order == ProcessingOrder.LeftToRight ? Parse(input.GetEnumerator()) : Parse(input.GetEnumerator());
-        }
-
-        public TOutput Parse(IEditEnumerator<object> input)
-        {
-            string parsing = "parsing section |";
-
-            IEditEnumerator<object> itr;
-            IEditEnumerator<object> start = input.Copy();
-            IEditEnumerator<object> end = input.Copy();
-            while (end.MoveNext())
-            {
-                if (end.Current is TInput)
-                {
-                    TInput current = (TInput)end.Current;
-
-                    if (Closing.Contains((TInput)end.Current))
-                    {
-                        break;
-                    }
-                    else if (Opening.Contains(current))
-                    {
-                        end.Add(1, Parse(end.Copy()));
-                        end.Move(1);
-                        end.Remove(-1);
-                    }
-                    else if (!Operations.ContainsKey(current))
-                    {
-                        end.Move(-1);
-                        end.Remove(1);
-
-                        string last = "";
-                        foreach (TOutput o in ParseOperand(current))
-                        {
-                            parsing += last;
-                            end.Add(1, o);
-                            end.Move(1);
-                            last = o + "|";
-                        }
-                    }
-                }
-
-                parsing += end.Current + "|";
-            }
-            Print.Log(parsing, end.Current);
-
-            int direction;
-
-            for (int i = 0; i < data.Length; i++)
-            {
-                /*if ((data[i][0].Value.Order == ProcessingOrder.RightToLeft && direction == -1) || (data[i][0].Value.Order == ProcessingOrder.LeftToRight && direction == 1))
-                {
-                    direction *= -1;
-                    while (itr.Move(direction) && !Closing.Contains(itr.Current)) { }
-                }*/
-
-                if (data[i][0].Value.Order == ProcessingOrder.LeftToRight)
-                {
-                    itr = start.Copy();
-                    direction = 1;
-                }
-                else
-                {
-                    itr = end.Copy();
-                    direction = -1;
-                }
-
-                while (itr.Move(direction))
-                {
-                    if (itr.Current is TInput)
-                    {
-                        TInput current = (TInput)itr.Current;
-
-                        if ((direction == 1 && Closing.Contains(current)) || (direction == -1 && Opening.Contains(current)))
-                        {
-                            if (i + 1 == data.Length)
-                            {
-                                itr.Remove();
-                            }
-                            break;
-                        }
-                        /*else if ((direction == -1 && Closing.Contains(current)) || (direction == 1 && Opening.Contains(current)))
-                        {
-                            itr.Add(direction, Parse(itr));
-                            itr.Move(direction);
-                            itr.Remove(-direction);
-                        }*/
-                        else
-                        {
-                            Operator<TOutput> operation;
-
-                            if (Operations.TryGetValue(current, out operation))
-                            {
-                                //Print.Log("found operator", itr.Current);
-
-                                foreach (KeyValuePair<TInput, Operator<TOutput>> kvp in data[i])
-                                {
-                                    if (kvp.Key.Equals(current))
-                                    {
-                                        Print.Log("doing operation", current);
-
-                                        IEditEnumerator<object>[] operandItrs = new IEditEnumerator<object>[kvp.Value.Targets.Length];
-                                        for (int j = 0; j < kvp.Value.Targets.Length; j++)
-                                        {
-                                            operandItrs[j] = itr.Copy();
-                                            kvp.Value.Targets[j](operandItrs[j]);
-                                        }
-
-                                        TOutput[] operands = new TOutput[operandItrs.Length];
-                                        for (int j = 0; j < operandItrs.Length; j++)
-                                        {
-                                            Print.Log("\t" + operandItrs[j].Current);
-                                            operands[j] = (TOutput)operandItrs[j].Current;
-                                            operandItrs[j].Remove();
-                                        }
-
-                                        itr.Add(1, kvp.Value.Operate(operands));
-                                        itr.MoveNext();
-                                        itr.Remove(-1);
-
-                                        break;
-                                    }
-                                }
-                            }
-                            else
-                            {
-
-                            }
-                        }
-                    }
-                }
-            }
-            Print.Log("done");
-            IEditEnumerator<object> printer = start.Copy();
-            while (printer.MoveNext())
-            {
-                Print.Log("\t" + printer.Current);
-            }
-
-            if (!start.MoveNext() || !(start.Current is TOutput))
-            {
-                throw new Exception();
-            }
-            else
-            {
-                start.MovePrev();
-                return Juxtapose(start);
-            }
-        }
-
-        public TOutput Parse1(IEditEnumerable<TInput> input)
         {
             string parsing = "parsing |";
             foreach (TInput s in input)

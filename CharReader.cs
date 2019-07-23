@@ -26,7 +26,7 @@ namespace Parse
         private Operator<TOutput> lastOperation = null;
         private Operator<TOutput> temp = null;
 
-        public TOutput Parse(string input) => Parse(Next(input));
+        public TOutput Parse(string input) => Parse(Next1(input));
 
         protected bool NextChar(ref string input, ref int i, out char next)
         {
@@ -50,6 +50,16 @@ namespace Parse
 
             next = input[i - 1];//.ToString();
             return false;
+        }
+
+        protected System.BiEnumerable.LinkedList<string> Next1(string input)
+        {
+            System.BiEnumerable.LinkedList<string> list = new System.BiEnumerable.LinkedList<string>();
+            foreach(string s in Next(input))
+            {
+                list.AddLast(s);
+            }
+            return list;
         }
 
         protected IEnumerable<string> Next(string input)

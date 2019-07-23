@@ -30,7 +30,9 @@ namespace Parse
     public interface IEditEnumerator<T> : IBiEnumerator<T>
     {
         void Add(int n, T t);
-        bool Remove(int n);
+        bool Remove(int n = 0);
+
+        IEditEnumerator<T> Copy();
     }
 
     public interface IOrdered<T> : ICollection<T>, IEditEnumerable<T> { }
