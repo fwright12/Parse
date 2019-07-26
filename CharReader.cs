@@ -10,11 +10,21 @@ using System.Extensions;
 #if DEBUG
 namespace Parse
 {
+    public abstract class Reader<TEnumerated, TInput, TOutput> : Reader<TInput, TOutput>
+        where TInput : System.Collections.IEnumerable//<TOutput>
+    {
+        public Reader(params IDictionary<TInput, Operator<TOutput>>[] data) : this(new Dictionary<TInput, Operator<TOutput>>(), data) { }
+
+        protected Reader(IDictionary<TInput, Operator<TOutput>> operations, params IDictionary<TInput, Operator<TOutput>>[] orderOfOperations) { }
+    }
+
     public abstract class CharReader<TOutput> : Reader<string, TOutput>
     {
-        new protected Trie<Operator<TOutput>> Operations => (Trie<Operator<TOutput>>)base.Operations;
+        new public Trie<Operator<TOutput>> Operations => (Trie<Operator<TOutput>>)base.Operations;
 
-        public CharReader(params KeyValuePair<string, Operator<TOutput>>[][] data) : base(new Trie<Operator<TOutput>>(), data)
+        public CharReader(Trie<Operator<TOutput>> operations) : base(operations) { }
+
+        public CharReader(params IDictionary<string, Operator<TOutput>>[] data) : base(new Trie<Operator<TOutput>>(), data)
         {
             Opening = new HashSet<string> { "(", "{", "[" };
             Closing = new HashSet<string> { ")", "}", "]" };
@@ -26,7 +36,15 @@ namespace Parse
         private Operator<TOutput> lastOperation = null;
         private Operator<TOutput> temp = null;
 
-        public TOutput Parse(string input) => Parse(Next1(input));
+        public TOutput Parse(string input) => Parse(Next(input));
+
+        protected virtual IEnumerable<string> Segment(IEnumerable<char> pieces)
+        {
+            foreach(char c in pieces)
+            {
+                yield return c.ToString();
+            }
+        }
 
         protected bool NextChar(ref string input, ref int i, out char next)
         {
@@ -52,17 +70,7 @@ namespace Parse
             return false;
         }
 
-        protected System.BiEnumerable.LinkedList<string> Next1(string input)
-        {
-            System.BiEnumerable.LinkedList<string> list = new System.BiEnumerable.LinkedList<string>();
-            foreach(string s in Next(input))
-            {
-                list.AddLast(s);
-            }
-            return list;
-        }
-
-        protected IEnumerable<string> Next(string input)
+        protected IEnumerable<object> Next(string input)
         {
             bool special = false;
 
@@ -101,13 +109,29 @@ namespace Parse
                     // Otherwise we're storing the matched part of the operator in buffer1 
                     search = Operations.TryGetValue1((lastOperation == null ? "" : buffer1) + buffer2, out temp);
                 }
-
+                
+                if (buffer1.Length > 0 &&
                     // Need to flush an operator (no longer an operation, but came across one)
-                if ((search == TrieContains.No && lastOperation != null) ||
+                    ((search == TrieContains.No && lastOperation != null) ||
                     // Need to flush an operand (found an operator, first one, something to flush)
-                    (search == TrieContains.Full && lastOperation == null && buffer1 != ""))
+                    (search == TrieContains.Full && lastOperation == null)))
                 {
-                    yield return buffer1;
+                    //yield return buffer1;
+                    Print.Log("found", buffer1, search);
+                    //yield return buffer1;
+                    // Operator
+                    if (search == TrieContains.No)
+                    {
+                        yield return buffer1;
+                    }
+                    // Operand
+                    else
+                    {
+                        foreach (string o in Segment(buffer1))
+                        {
+                            yield return o;
+                        }
+                    }
                     buffer1 = "";
                 }
 

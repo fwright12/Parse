@@ -208,7 +208,7 @@ namespace OnePassReader
                     for (int k = 0; k < operands.Length; k++)
                     {
                         operands[k] = (TOutput)operandNodes[k].Current;
-                        operandNodes[k].Remove();
+                        operandNodes[k].Remove(0);
                     }
 
                     Print.Log("operating", op.GetType(), operands.Length);

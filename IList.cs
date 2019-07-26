@@ -35,6 +35,10 @@ namespace System.BiEnumerable
             {
                 if (n == 0)
                 {
+                    if (Index >= 0 && Index < List.Count)
+                    {
+                        List[Index] = t;
+                    }
                     return;
                 }
                 else if (n < 0)
@@ -58,7 +62,7 @@ namespace System.BiEnumerable
             public bool MoveNext() => Move(1);
             public bool MovePrev() => Move(-1);
 
-            public bool Remove(int n = 0)
+            public bool Remove(int n)
             {
                 Enumerator itr = new Enumerator(this);
                 if (!itr.Move(n))
