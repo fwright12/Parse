@@ -60,7 +60,6 @@
     <Compile Include="BiEnumeration.cs" />
     <Compile Include="CharReader.cs" />
     <Compile Include="IList.cs" />
-    <Compile Include="InPlaceReader.cs" />
     <Compile Include="LinkedList.cs" />
     <Compile Include="OnePassReader.cs" />
     <Compile Include="Reader - Copy.cs" />

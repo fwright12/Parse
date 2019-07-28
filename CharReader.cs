@@ -11,20 +11,21 @@ using System.Extensions;
 namespace Parse
 {
     public abstract class Reader<TEnumerated, TInput, TOutput> : Reader<TInput, TOutput>
-        where TInput : System.Collections.IEnumerable//<TOutput>
+        where TInput : System.Collections.IEnumerable
     {
-        public Reader(params IDictionary<TInput, Operator<TOutput>>[] data) : this(new Dictionary<TInput, Operator<TOutput>>(), data) { }
+        public Reader(IDictionary<TInput, Tuple<Operator<TOutput>, int>> operations) : base(operations)
+        {
 
-        protected Reader(IDictionary<TInput, Operator<TOutput>> operations, params IDictionary<TInput, Operator<TOutput>>[] orderOfOperations) { }
+        }
+
+        protected abstract IEnumerable<TInput> Segment(IEnumerable<TEnumerated> pieces);
     }
 
     public abstract class CharReader<TOutput> : Reader<string, TOutput>
     {
-        new public Trie<Operator<TOutput>> Operations => (Trie<Operator<TOutput>>)base.Operations;
+        new public Trie<Tuple<Operator<TOutput>, int>> Operations => (Trie<Tuple<Operator<TOutput>, int>>)base.Operations;
 
-        public CharReader(Trie<Operator<TOutput>> operations) : base(operations) { }
-
-        public CharReader(params IDictionary<string, Operator<TOutput>>[] data) : base(new Trie<Operator<TOutput>>(), data)
+        public CharReader(Trie<Tuple<Operator<TOutput>, int>> operations) : base(operations)
         {
             Opening = new HashSet<string> { "(", "{", "[" };
             Closing = new HashSet<string> { ")", "}", "]" };
@@ -104,10 +105,12 @@ namespace Parse
                 else
                 {
                     buffer2 += next;
+                    Tuple<Operator<TOutput>, int> tuple;
 
                     // If we haven't found an operator yet, ignore what we have (any partial matches are in buffer2)
                     // Otherwise we're storing the matched part of the operator in buffer1 
-                    search = Operations.TryGetValue1((lastOperation == null ? "" : buffer1) + buffer2, out temp);
+                    search = Operations.TryGetValue1((lastOperation == null ? "" : buffer1) + buffer2, out tuple);
+                    temp = tuple?.Item1;
                 }
                 
                 if (buffer1.Length > 0 &&
@@ -116,9 +119,7 @@ namespace Parse
                     // Need to flush an operand (found an operator, first one, something to flush)
                     (search == TrieContains.Full && lastOperation == null)))
                 {
-                    //yield return buffer1;
                     Print.Log("found", buffer1, search);
-                    //yield return buffer1;
                     // Operator
                     if (search == TrieContains.No)
                     {

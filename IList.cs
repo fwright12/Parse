@@ -78,6 +78,8 @@ namespace System.BiEnumerable
             {
                 Index = -1;
             }
+
+            public override bool Equals(object obj) => obj is Enumerator && Index == ((Enumerator)obj).Index;
         }
     }
 }

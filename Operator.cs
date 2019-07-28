@@ -34,7 +34,7 @@ namespace Parse
     using TargetFunction = Action<IEditEnumerator<object>>;
 
     public delegate T FunctionWithVariableParamterCount<T>(params T[] operands);
-    public enum ProcessingOrder { LeftToRight, RightToLeft }
+    public enum ProcessingOrder { LeftToRight = 1, RightToLeft = -1 }
 
     public class Operator<T>
     {

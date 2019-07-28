@@ -9,62 +9,102 @@ using System.Extensions;
 #if DEBUG
 namespace Parse
 {
+    public enum Member { Opening = -1, Closing = 1, Operand, Operator };
+
     public abstract class Reader<TInput, TOutput>
     {
         public HashSet<TInput> Opening;
         public HashSet<TInput> Closing;
         public HashSet<TInput> Ignore;
 
-        readonly public IDictionary<TInput, Operator<TOutput>> Operations;
-        private IDictionary<TInput, Operator<TOutput>>[] OrderOfOperations;
+        public readonly IDictionary<TInput, Tuple<Operator<TOutput>, int>> Operations;
 
-        public Reader(params IDictionary<TInput, Operator<TOutput>>[] data) : this(new Dictionary<TInput, Operator<TOutput>>(), data) { }
-        public Reader(IDictionary<TInput, Operator<TOutput>> operations)
+        protected Reader(IDictionary<TInput, Tuple<Operator<TOutput>, int>> operations)
         {
             Operations = operations;
-        }
-
-        protected Reader(IDictionary<TInput, Operator<TOutput>> operations, params IDictionary<TInput, Operator<TOutput>>[] orderOfOperations)
-        {
-            Operations = operations;
-            OrderOfOperations = orderOfOperations;
 
             Opening = new HashSet<TInput>();
             Closing = new HashSet<TInput>();
             Ignore = new HashSet<TInput>();
 
-            /*for (int i = 1; i < OrderOfOperations.Length; i++)
+            foreach (KeyValuePair<TInput, Tuple<Operator<TOutput>, int>> kvp in Operations)
             {
-                foreach(KeyValuePair<TInput, Operator<TOutput>> kvp in OrderOfOperations[i])
+                if (Opening.Contains(kvp.Key) || Closing.Contains(kvp.Key))
                 {
-                    OrderOfOperations[0].Add(kvp);
+                    throw new Exception("The character " + kvp + " cannot appear in a command - this character is used to separate quantities");
                 }
-            }
-
-            Operations = OrderOfOperations[0];*/
-            
-            for (int i = 0; i < OrderOfOperations.Length; i++)
-            {
-                foreach (KeyValuePair<TInput, Operator<TOutput>> kvp in OrderOfOperations[i])
+                /*else if (kvp.Value.Item1.Order != Operations[i].First().Value.Item1.Order)
                 {
-                    if (Opening.Contains(kvp.Key) || Closing.Contains(kvp.Key))
-                    {
-                        throw new Exception("The character " + kvp + " cannot appear in a command - this character is used to separate quantities");
-                    }
-                    else if (kvp.Value.Order != OrderOfOperations[i].First().Value.Order)
-                    {
-                        throw new Exception("All operators in a tier must process in the same direction");
-                    }
-
-                    Operations.Add(kvp.Key, kvp.Value);
-                }
+                    throw new Exception("All operators in a tier must process in the same direction");
+                }*/
             }
         }
 
         protected TOutput ParseOperand(object operand) => operand is TOutput ? (TOutput)operand : ParseOperand((TInput)operand);
         protected abstract TOutput ParseOperand(TInput operand);
+        public TOutput ParseOperandUnsafe(IEditEnumerator<object> itr)
+        {
+            Member member = Classify(itr.Current);
+            if (member == Member.Opening || member == Member.Closing)
+            {
+                itr.Add(0, Parse(itr, (ProcessingOrder)(-(int)member)));
+            }
+
+            return ParseOperand(itr.Current);
+        }
 
         protected virtual TOutput Juxtapose(IEnumerable<TOutput> expression) => throw new Exception();
+        public IEnumerable<TOutput> CollectOperands(IEditEnumerator<object> itr, ProcessingOrder direction = ProcessingOrder.LeftToRight)
+        {
+            while (itr.Move((int)direction))
+            {
+                Member member = Classify(itr.Current);
+
+                if (member == Member.Operand || (int)direction == -(int)member)
+                {
+                    
+                }
+                else
+                {
+                    break;
+                }
+                /*if (itr.Current is TInput && Closing.Contains((TInput)itr.Current))
+                {
+                    itr.Remove(0);
+                    break;
+                }*/
+
+                //yield return itr.Current is TOutput ? (TOutput)itr.Current : ParseOperand((TInput)itr.Current);
+                //yield return (TOutput)itr.Current;
+                //yield return ParseOperand(itr.Current);
+                yield return ParseOperandUnsafe(itr);
+
+                itr.Move(-(int)direction);
+                itr.Remove((int)direction);
+            }
+        }
+
+        public Member Classify(object input) => input is TOutput ? Member.Operand : Classify((TInput)input);
+
+        public Member Classify(TInput input)
+        {
+            if (Opening.Contains(input))
+            {
+                return Member.Opening;
+            }
+            else if (Closing.Contains(input))
+            {
+                return Member.Closing;
+            }
+            else if (Operations.ContainsKey(input))
+            {
+                return Member.Operator;
+            }
+            else
+            {
+                return Member.Operand;
+            }
+        }
 
         public TOutput Parse(IEnumerable<object> input)
         {
@@ -77,105 +117,85 @@ namespace Parse
             return Parse(list.GetEnumerator());
         }
 
-        private int Index(TInput input)
+        private TOutput Parse(IEditEnumerator<object> input, ProcessingOrder direction = ProcessingOrder.LeftToRight)
         {
-            for (int i = 0; i < OrderOfOperations.Length; i++)
-            {
-                if (OrderOfOperations[i].ContainsKey(input))
-                {
-                    return i;
-                }
-            }
+            string parsing = "";
+            SortedDictionary<int, ProcessingOrder> order = new SortedDictionary<int, ProcessingOrder>();
 
-            return -1;
-        }
-
-        private TOutput Parse(IEditEnumerator<object> input)
-        {
-            string parsing = "parsing section |";
-            SortedSet<int> order = new SortedSet<int>();
-
-            IEditEnumerator<object> itr = null;
+            IEditEnumerator<object> itr;
             IEditEnumerator<object> start = input.Copy();
             IEditEnumerator<object> end = input.Copy();
-            while (end.MoveNext())
+
+            int count = 0;
+            while (end.Move((int)direction))
             {
-                parsing += end.Current + "|";
+                if (direction == ProcessingOrder.LeftToRight)
+                {
+                    parsing += end.Current + "|";
+                }
+                else
+                {
+                    parsing = end.Current + "|" + parsing;
+                }
+
                 if (!(end.Current is TInput))
                 {
                     continue;
                 }
 
                 TInput current = (TInput)end.Current;
+                Member member = Classify(current);
 
-                if (Closing.Contains((TInput)end.Current))
+                if ((int)direction == (int)member)
                 {
-                    break;
-                }
-                else if (Opening.Contains(current))
-                {
-                    end.Add(0, Parse(end.Copy()));
-                }
-                else //if (Operations.ContainsKey(current))
-                {
-                    int index = Index(current);
-
-                    if (index == -1)
+                    if (count == 0)
                     {
-                        end.Add(0, ParseOperand(current));
+                        break;
                     }
                     else
                     {
-                        order.Add(index);
+                        count--;
                     }
                 }
-                /*else if (!Operations.ContainsKey(current))
+                else if ((int)direction == -(int)member)
                 {
-                    //end.Add(0, ParseOperand(current));
-                }*/
-                /*else if (!Operations.ContainsKey(current))
+                    count++;
+                    //end.Add(0, Parse(end.Copy()));
+                }
+                else
                 {
-                    end.Move(1);
-                    end.Remove(-1);
-
-                    string last = "";
-                    //foreach (TOutput o in ParseOperand(current))
-                    //{
-                    TOutput o = ParseOperand(current);
-                        parsing += last;
-                        end.Add(-1, o);
-                        last = o + "|";
-                    //}
-
-                    end.MovePrev();
-                }*/
+                    Tuple<Operator<TOutput>, int> temp;
+                    if (Operations.TryGetValue(current, out temp))
+                    {
+                        order[temp.Item2] = temp.Item1.Order;
+                    }
+                    else
+                    {
+                        //end.Add(0, ParseOperand(current));
+                    }
+                }
             }
-            Print.Log(parsing, end.Current);
 
-            int direction;
-
-            //for (int i = 0; i < OrderOfOperations.Length; i++)
-            //for (int j = 0; j < order.Count; j++)
-            foreach (int i in order)
+            if (direction == ProcessingOrder.RightToLeft)
             {
-                //Print.Log(i, order[i]);
-                /*if (!order[i])
-                {
-                    continue;
-                }*/
+                Misc.Swap(ref start, ref end);
+            }
 
-                if (OrderOfOperations[i].First().Value.Order == ProcessingOrder.LeftToRight)
+            Print.Log("parsing section |" + parsing, end.Current);
+            Print.Log("start is " + start.Current + " and end is " + end.Current);
+
+            foreach (KeyValuePair<int, ProcessingOrder> kvp in order)
+            {
+                if (kvp.Value == ProcessingOrder.LeftToRight)
                 {
                     itr = start.Copy();
-                    direction = 1;
                 }
                 else
                 {
                     itr = end.Copy();
-                    direction = -1;
                 }
 
-                while (itr.Move(direction))
+                while (itr.Move((int)kvp.Value))
                 {
                     if (!(itr.Current is TInput))
                     {
@@ -183,27 +203,19 @@ namespace Parse
                     }
 
                     TInput current = (TInput)itr.Current;
-                    Operator<TOutput> operation;
+                    Tuple<Operator<TOutput>, int> tuple;
 
-                    if ((direction == 1 && Closing.Contains(current)) || (direction == -1 && Opening.Contains(current)))
+                    //if ((kvp.Value == ProcessingOrder.LeftToRight && Closing.Contains(current)) ||
+                      //  (kvp.Value == ProcessingOrder.RightToLeft && Opening.Contains(current)))
+                    if (itr.Equals(start) || itr.Equals(end))
                     {
-                        if (i + 1 == OrderOfOperations.Length)
-                        //if (i == order.Last())
-                        {
-                            //itr.Remove(0);
-                        }
                         break;
                     }
-                    /*else if ((direction == -1 && Closing.Contains(current)) || (direction == 1 && Opening.Contains(current)))
-                    {
-                        itr.Add(direction, Parse(itr));
-                        itr.Move(direction);
-                        itr.Remove(-direction);
-                    }*/
-                    else if (OrderOfOperations[i].TryGetValue(current, out operation))
+                    else if (Operations.TryGetValue(current, out tuple) && kvp.Key == tuple.Item2)
                     {
                         Print.Log("doing operation", current);
 
+                        Operator<TOutput> operation = tuple.Item1;
                         IEditEnumerator<object>[] operandItrs = new IEditEnumerator<object>[operation.Targets.Length];
                         for (int j = 0; j < operation.Targets.Length; j++)
                         {
@@ -215,7 +227,8 @@ namespace Parse
                         for (int j = 0; j < operandItrs.Length; j++)
                         {
                             Print.Log("\t" + operandItrs[j].Current);
-                            operands[j] = operandItrs[j].Current is TOutput ? (TOutput)operandItrs[j].Current : ParseOperand((TInput)operandItrs[j].Current);
+                            operands[j] = ParseOperandUnsafe(operandItrs[j]); //ParseOperand(operandItrs[j].Current);
+                            //operands[j] = operandItrs[j].Current is TOutput ? (TOutput)operandItrs[j].Current : ParseOperand((TInput)operandItrs[j].Current);
                             operandItrs[j].Remove(0);
                         }
 
@@ -224,7 +237,10 @@ namespace Parse
                 }
             }
 
-            //end.Copy().Remove(0);
+            if (direction == ProcessingOrder.RightToLeft)
+            {
+                Misc.Swap(ref start, ref end);
+            }
 
             Print.Log("done");
             IEditEnumerator<object> printer = start.Copy();
@@ -233,33 +249,10 @@ namespace Parse
                 Print.Log("\t" + printer.Current);
             }
 
-            return Juxtapose(test(start));
-
-            if (test(start.Copy()).GetEnumerator().MoveNext())
-            {
-                //throw new Exception();
-            }
-            else
-            {
-                //return Juxtapose1(test(start));
-            }
-        }
-
-        private IEnumerable<TOutput> test(IEditEnumerator<object> itr)
-        {
-            while (itr.MoveNext())
-            {
-                if (itr.Current is TInput && Closing.Contains((TInput)itr.Current))
-                {
-                    itr.Remove(0);
-                    break;
-                }
-
-                yield return itr.Current is TOutput ? (TOutput)itr.Current : ParseOperand((TInput)itr.Current);
-
-                itr.MovePrev();
-                itr.Remove(1);
-            }
+            TOutput result = Juxtapose(CollectOperands(start, direction));
+            Print.Log("start is " + start.Current);
+            start.Remove(0);
+            return result;
         }
     }
 }

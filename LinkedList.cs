@@ -43,7 +43,7 @@ namespace System.BiEnumerable
                 Node = itr.Node;
                 begin = itr.begin;
             }
-
+            
             public void Add(int n, T t)
             {
                 if (n == 0)
@@ -133,6 +133,11 @@ namespace System.BiEnumerable
             {
                 Node = null;
                 begin = true;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is Enumerator && Node == ((Enumerator)obj).Node;
             }
         }
     }
