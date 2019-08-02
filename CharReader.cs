@@ -47,50 +47,24 @@ namespace Parse
             }
         }
 
-        protected bool NextChar(ref string input, ref int i, out char next)
+        protected IEnumerable<string> Next(string input)
         {
-            next = default;
-
-            do
-            {
-                if (i >= input.Length)
-                {
-                    return true;
-                }
-
-                next = input[i];
-
-                if (Closing.Contains(input[i].ToString()) || Opening.Contains(input[i].ToString()))
-                {
-                    return true;
-                }
-            }
-            while (Ignore.Contains(input[i++].ToString()));
-
-            next = input[i - 1];//.ToString();
-            return false;
-        }
-
-        protected IEnumerable<object> Next(string input)
-        {
-            bool special = false;
-
-            for (int i = 0; !(buffer1.Length == 0 && buffer2.Length == 0) || i < input.Length; )
+            for (int i = 0; i < input.Length || buffer1.Length > 0 || buffer2.Length > 0; i++)
             {
                 TrieContains search;
 
-                char next;
-                special = NextChar(ref input, ref i, out next);
+                //while (i < input.Length && Ignore.Contains(input[i].ToString())) { i++; }
 
-                //Print.Log(buffer2, i < input.Length ? input[i].ToString() : "i out of bounds");
-                //Print.Log(search, buffer1, buffer2);
-
-                if (special)
+                if (i >= input.Length || (int)Classify(input[i].ToString()) < 2)
                 {
                     // We have emptied both buffers, so we're done with everything up to this point
-                    if (buffer1.Length == 0 && buffer2.Length == 0 && i++ < input.Length)
+                    if (buffer1.Length == 0 && buffer2.Length == 0 && i < input.Length)
                     {
-                        yield return next.ToString();
+                        yield return input[i].ToString();
+                    }
+                    else
+                    {
+                        i--;
                     }
 
                     if (lastOperation != null || buffer2.Length > 0)
@@ -104,7 +78,7 @@ namespace Parse
                 }
                 else
                 {
-                    buffer2 += next;
+                    buffer2 += input[i];
                     Tuple<Operator<TOutput>, int> tuple;
 
                     // If we haven't found an operator yet, ignore what we have (any partial matches are in buffer2)

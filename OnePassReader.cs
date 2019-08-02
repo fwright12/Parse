@@ -201,7 +201,7 @@ namespace OnePassReader
                     for (int k = 0; k < op.Targets.Length; k++)
                     {
                         operandNodes[k] = new System.BiEnumerable.LinkedList<object>.Enumerator(node);
-                        op.Targets[k](operandNodes[k]);
+                        //op.Targets[k](operandNodes[k]);
                     }
 
                     TOutput[] operands = new TOutput[operandNodes.Length];
