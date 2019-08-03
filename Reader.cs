@@ -49,6 +49,10 @@ namespace Parse
             {
                 itr.Add(0, Parse(itr, (ProcessingOrder)(-(int)member)));
             }
+            else if (member == Member.Operator)
+            {
+                throw new Exception("Invalid syntax. Looking for operand but got operator");
+            }
 
             return itr.Current is TOutput ? (TOutput)itr.Current : ParseOperand((TInput)itr.Current);
         }
@@ -57,6 +61,8 @@ namespace Parse
 
         public IEnumerable<TOutput> CollectOperands(IEditEnumerator<object> itr, ProcessingOrder direction = ProcessingOrder.LeftToRight)
         {
+            bool empty = true;
+            
             while (itr.Move((int)direction))
             {
                 Member member = Classify(itr.Current);
@@ -66,10 +72,17 @@ namespace Parse
                     break;
                 }
 
+                empty = false;
+
                 yield return ParseOperand(itr);
 
                 itr.Move(-(int)direction);
                 itr.Remove((int)direction);
+            }
+
+            if (empty)
+            {
+                throw new Exception("No operands to collect");
             }
         }
 
@@ -109,34 +122,35 @@ namespace Parse
         private TOutput Parse(IEditEnumerator<object> start, ProcessingOrder direction = ProcessingOrder.LeftToRight)
         {
             SortedDictionary<int, ProcessingOrder> order = new SortedDictionary<int, ProcessingOrder>();
-            IEditEnumerator<object> end = start.Copy();
             int count = 0;
 
 #if DEBUG
+            IEditEnumerator<object> printer = start.Copy();
+
             string parsing = "";
-            while (end.Move((int)direction))
+            while (printer.Move((int)direction))
             {
                 if (direction == ProcessingOrder.LeftToRight)
                 {
-                    parsing += end.Current + "|";
+                    parsing += printer.Current + "|";
                 }
                 else
                 {
-                    parsing = end.Current + "|" + parsing;
+                    parsing = printer.Current + "|" + parsing;
                 }
             }
 
             Print.Log("parsing section |" + parsing);
-            Print.Log("start is " + start.Current + " and end is " + end.Current);
-
-            end = start.Copy();
+            Print.Log("start is " + start.Current + " and end is " + printer.Current);
 #endif
+
+            IEditEnumerator<object> end = start.Copy();
 
             // Initial pass over the input to figure out:
             //      Where the beginning and end are (match parentheses)
             //      What operators we should look for (so we can skip iterating empty tiers)
             // Also delete anything that's supposed to be ignored
-            while (end.Move((int)direction))
+            while (end.Move((int)direction) && end.Current != null)
             {
                 if (!(end.Current is TInput))
                 {
@@ -164,6 +178,7 @@ namespace Parse
                 {
                     count++;
                 }
+                // Delete anything that's supposed to be ignored
                 else if (Ignore.Contains(current))
                 {
                     end.Move(-1);
@@ -181,7 +196,7 @@ namespace Parse
             {
                 IEditEnumerator<object> itr = kvp.Value == ProcessingOrder.LeftToRight ^ direction == ProcessingOrder.LeftToRight ? end.Copy() : start.Copy();
 
-                while (itr.Move((int)kvp.Value) && !itr.Equals(start) && !itr.Equals(end))
+                while (itr.Move((int)kvp.Value) && !itr.Equals(start) && !itr.Equals(end) && itr.Current != null)
                 {
                     if (!(itr.Current is TInput))
                     {
@@ -194,18 +209,20 @@ namespace Parse
                         Print.Log("doing operation", itr.Current);
 
                         Operator<TOutput> operation = tuple.Item1;
+                        itr.Add(0, null);
 
                         IEditEnumerator<object>[] operandItrs = new IEditEnumerator<object>[operation.Targets.Length];
+                        TOutput[] operands = new TOutput[operandItrs.Length];
+
                         for (int j = 0; j < operation.Targets.Length; j++)
                         {
                             operation.Targets[j](operandItrs[j] = itr.Copy());
+                            operands[j] = ParseOperand(operandItrs[j]);
+                            Print.Log("\t" + operandItrs[j].Current);
                         }
 
-                        TOutput[] operands = new TOutput[operandItrs.Length];
                         for (int j = 0; j < operandItrs.Length; j++)
                         {
-                            Print.Log("\t" + operandItrs[j].Current);
-                            operands[j] = ParseOperand(operandItrs[j]);
                             operandItrs[j].Remove(0);
                         }
 
@@ -216,7 +233,7 @@ namespace Parse
 
 #if DEBUG
             Print.Log("done");
-            IEditEnumerator<object> printer = start.Copy();
+            printer = start.Copy();
             while (printer.MoveNext())
             {
                 Print.Log("\t" + printer.Current);
