@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 using System.Extensions;
 using System.Collections;
 
+using Parse;
+
 #if DEBUG
-namespace Parse
+namespace Test
 {
     public abstract class Reader1<TInput, TOutput> : Reader1<TOutput>
     {
@@ -20,7 +22,7 @@ namespace Parse
         public Reader1(IDictionary<T, Tuple<FunctionWithVariableParamterCount<T>, Action<IEditEnumerator<T>[], int>>> operations) { }
     }
 
-    public abstract class Reader<T>
+    public abstract class InPlaceReader<T>
     {
         public HashSet<T> Opening;
         public HashSet<T> Closing;
@@ -28,7 +30,7 @@ namespace Parse
 
         public readonly IDictionary<T, Tuple<Operator<T>, int>> Operations;
 
-        protected Reader(IDictionary<T, Tuple<Operator<T>, int>> operations)
+        protected InPlaceReader(IDictionary<T, Tuple<Operator<T>, int>> operations)
         {
             Operations = operations;
 

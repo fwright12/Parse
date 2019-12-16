@@ -7,37 +7,77 @@ using System.Threading.Tasks;
 using System.Extensions;
 //using Crunch.Machine;
 
-#if DEBUG
 namespace Parse
 {
-    public abstract class Reader<TEnumerated, TInput, TOutput> : Reader<TInput, TOutput>
-        where TInput : System.Collections.IEnumerable
-    {
-        public Reader(IDictionary<TInput, Tuple<Operator<TOutput>, int>> operations) : base(operations)
-        {
-
-        }
-
-        protected abstract IEnumerable<TInput> Segment(IEnumerable<TEnumerated> pieces);
-    }
-
-    public abstract class CharReader<TOutput> : Reader<string, TOutput>
+    /*public abstract class CharReader<TOutput> : Reader<string, TOutput>
     {
         new public Trie<Tuple<Operator<TOutput>, int>> Operations => (Trie<Tuple<Operator<TOutput>, int>>)base.Operations;
 
-        public CharReader(Trie<Tuple<Operator<TOutput>, int>> operations) : base(operations)
+        public CharReader(params KeyValuePair<string, Operator<TOutput>>[][] operations) : base(operations.Flatten(new Trie<Tuple<Operator<TOutput>, int>>()))
         {
             Opening = new HashSet<string> { "(", "{", "[" };
             Closing = new HashSet<string> { ")", "}", "]" };
             Ignore = new HashSet<string> { " " };
         }
 
+        public TOutput Parse(string input) => Parse(Next(input));
+
+        protected virtual IEnumerable<string> Segment(IEnumerable<char> pieces)
+        {
+            foreach (char c in pieces)
+            {
+                yield return c.ToString();
+            }
+        }
+
+        protected IEnumerable<string> Next(string input)
+        {
+            Lexer lexer = new Lexer();
+            lexer
+        }
+    }*/
+
+    public abstract class CharReader<TOutput> : Reader<string, TOutput>
+    {
+        new public Trie<Tuple<Operator<TOutput>, int>> Operations => (Trie<Tuple<Operator<TOutput>, int>>)base.Operations;
+
+        public CharReader(params KeyValuePair<string, Operator<TOutput>>[][] operations) : base(operations.Flatten(new Trie<Tuple<Operator<TOutput>, int>>()))
+        {
+            Opening = new HashSet<string> { "(", "{", "[" };
+            Closing = new HashSet<string> { ")", "}", "]" };
+            Ignore = new HashSet<string> { " " };
+        }
+
+        /*public CharReader(Trie<Tuple<Operator<TOutput>, int>> operations) : base(operations)
+        {
+            Opening = new HashSet<string> { "(", "{", "[" };
+            Closing = new HashSet<string> { ")", "}", "]" };
+            Ignore = new HashSet<string> { " " };
+        }*/
+
         private string buffer1 = "";
         private string buffer2 = "";
         private Operator<TOutput> lastOperation = null;
         private Operator<TOutput> temp = null;
 
-        public TOutput Parse(string input) => Parse(Next(input));
+        public TOutput Parse(string input)
+        {
+            return ParseTest(input);
+            return Parse(Next(input));
+        }
+        public TOutput ParseTest(string input)
+        {
+            Lexer<string, TOutput> lexer = new Lexer<string, TOutput>(Operations, GetTokens);
+            return Parse(lexer.TokenStream(input));
+        }
+
+        private IEnumerable<Token> GetTokens(IEnumerable<char> pieces)
+        {
+            foreach (string s in Segment(pieces))
+            {
+                yield return new Token { Value = s };
+            }
+        }
 
         protected virtual IEnumerable<string> Segment(IEnumerable<char> pieces)
         {
@@ -138,4 +178,3 @@ namespace Parse
         }
     }
 }
-#endif

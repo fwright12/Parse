@@ -28,46 +28,32 @@ namespace Crunch.Machine
     public class UnaryOperator : Operator { public UnaryOperator(Func<object, object> func, Func<LinkedListNode<object>, LinkedListNode<object>> operand) : base((o) => func(o[0]), operand) { } }
 }
 
-/*namespace Parse
-{
-    public delegate T FunctionWithVariableParamterCount<T>(params T[] operands);
-    public enum ProcessingOrder { LeftToRight = 1, RightToLeft = -1 }
-
-    public class Operator<T>
-    {
-        public FunctionWithVariableParamterCount<T> Operate;
-        public Action<IEditEnumerator<T>>[] Targets;
-        public ProcessingOrder Order;
-
-        public Operator(FunctionWithVariableParamterCount<T> operate, params Action<IEditEnumerator<T>>[] targets)
-        {
-            Operate = operate;
-            Targets = targets;
-            Order = ProcessingOrder.LeftToRight;
-        }
-
-        public Operator(FunctionWithVariableParamterCount<T> operate, ProcessingOrder order, params Action<IEditEnumerator<T>>[] targets) : this(operate, targets)
-        {
-            Order = order;
-        }
-    }
-
-    public class BinaryOperator<T> : Operator<T>
-    {
-        //public BinaryOperator(Func<T, T, T> func, TargetFunction previous, TargetFunction next) : base((o) => func(o[0], o[1]), previous, next) { }
-
-        public BinaryOperator(Func<T, T, T> func, Action<IEditEnumerator<T>> previous, Action<IEditEnumerator<T>> next, ProcessingOrder order = ProcessingOrder.LeftToRight) : base((o) => func(o[0], o[1]), order, previous, next) { }
-    }
-
-    public class UnaryOperator<T> : Operator<T> { public UnaryOperator(Func<T, T> func, Action<IEditEnumerator<T>> operand) : base((o) => func(o[0]), ProcessingOrder.RightToLeft, operand) { } }
-}*/
-
 namespace Parse
 {
     using TargetFunction = Action<IEditEnumerator<object>>;
+    using TokenType = Tuple<string, FunctionWithVariableParamterCount<string>>;
 
     public delegate T FunctionWithVariableParamterCount<T>(params T[] operands);
+    public delegate TOutput FunctionWithVariableParamterCount<TInput, TOutput>(params TInput[] operands);
+    
     public enum ProcessingOrder { LeftToRight = 1, RightToLeft = -1 }
+
+    /*public class ParseTreeNode//<TInput, TOutput>
+    {
+        private TokenType Token;
+        private ParseTreeNode[] Operands;
+
+        static ParseTreeNode()
+        {
+            //new ParseTreeNode(new TokenType("+", (o) => null), new ParseTreeNode()));
+        }
+
+        public ParseTreeNode(string name, FunctionWithVariableParamterCount<string> operation, params ParseTreeNode[] operands)
+        {
+            Token = new TokenType(name, operation);
+            Operands = operands;
+        }
+    }*/
 
     public class Operator<T>
     {
@@ -86,6 +72,26 @@ namespace Parse
         {
             Order = order;
         }
+
+        /*public Token<T> DoOperation(IEditEnumerator<Token<T>> itr)
+        {
+            IEditEnumerator<Token<T>>[] operandItrs = new IEditEnumerator<Token<T>>[Targets.Length];
+            T[] operands = new T[operandItrs.Length];
+
+            for (int j = 0; j < Targets.Length; j++)
+            {
+                //Targets[j](operandItrs[j] = itr.Copy());
+                operands[j] = default;// ParseOperand(operandItrs[j]);
+                Print.Log("\t" + operandItrs[j].Current);
+            }
+
+            for (int j = 0; j < operandItrs.Length; j++)
+            {
+                operandItrs[j].Remove(0);
+            }
+
+            return null; // Operate(operands);
+        }*/
     }
 
     public class BinaryOperator<T> : Operator<T>

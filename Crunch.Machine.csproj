@@ -60,6 +60,7 @@
     <Compile Include="BiEnumeration.cs" />
     <Compile Include="CharReader.cs" />
     <Compile Include="IList.cs" />
+    <Compile Include="Lexer.cs" />
     <Compile Include="LinkedList.cs" />
     <Compile Include="OnePassReader.cs" />
     <Compile Include="Reader - Copy.cs" />
@@ -70,7 +71,7 @@
     <Compile Include="Test.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\C# Extensions\System.Extensions\System.Extensions.csproj">
+    <ProjectReference Include="..\..\Code\C#\System.Extensions\System.Extensions.csproj">
       <Project>{f2e94f0b-5217-44a2-8747-a28c1d8c7e4b}</Project>
       <Name>System.Extensions</Name>
     </ProjectReference>

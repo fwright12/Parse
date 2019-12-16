@@ -12,7 +12,6 @@ C:\Users\Flint\Documents\Calculator Stuff\Parse\bin\Release\Crunch.Machine.pdb
 C:\Users\Flint\Documents\Calculator Stuff\Parse\bin\Release\System.Extensions.dll
 C:\Users\Flint\Documents\Calculator Stuff\Parse\bin\Release\System.Extensions.pdb
 C:\Users\Flint\Documents\Calculator Stuff\Parse\obj\Release\Crunch.Machine.csprojAssemblyReference.cache
-C:\Users\Flint\Documents\Calculator Stuff\Parse\obj\Release\Crunch.Machine.csproj.CoreCompileInputs.cache
 C:\Users\Flint\Documents\Calculator Stuff\Parse\obj\Release\Crunch.Machine.csproj.CopyComplete
 C:\Users\Flint\Documents\Calculator Stuff\Parse\obj\Release\Crunch.Machine.dll
 C:\Users\Flint\Documents\Calculator Stuff\Parse\obj\Release\Crunch.Machine.pdb

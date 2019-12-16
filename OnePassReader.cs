@@ -76,7 +76,7 @@ namespace OnePassReader
             Stack<Evaluator> quantities = new Stack<Evaluator>();
 
             IEditEnumerator<TInput> itr = input.GetEnumerator();
-            quantities.Push(new Evaluator(new System.BiEnumerable.LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count], new LinkedList<Operator<TOutput>>[Count]));
+            quantities.Push(new Evaluator(new Parse.Collections.Generic.LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count], new LinkedList<Operator<TOutput>>[Count]));
 
             while (true)
             {
@@ -106,7 +106,7 @@ namespace OnePassReader
                         }
                         else
                         {
-                            System.BiEnumerable.LinkedList<object> front = new System.BiEnumerable.LinkedList<object>();
+                            Parse.Collections.Generic.LinkedList<object> front = new Parse.Collections.Generic.LinkedList<object>();
                             front.AddFirst(answer);
                             quantities.Push(new Evaluator(front, new LinkedList<LinkedListNode<object>>[Count], new LinkedList<Operator<TOutput>>[Count]));
                         }
@@ -119,7 +119,7 @@ namespace OnePassReader
                 else if (Opening.Contains(itr.Current))
                 {
                     Print.Log("open");
-                    quantities.Push(new Evaluator(new System.BiEnumerable.LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count], new LinkedList<Operator<TOutput>>[Count]));
+                    quantities.Push(new Evaluator(new Parse.Collections.Generic.LinkedList<object>(), new LinkedList<LinkedListNode<object>>[Count], new LinkedList<Operator<TOutput>>[Count]));
                 }
                 else
                 {
@@ -200,7 +200,7 @@ namespace OnePassReader
                     
                     for (int k = 0; k < op.Targets.Length; k++)
                     {
-                        operandNodes[k] = new System.BiEnumerable.LinkedList<object>.Enumerator(node);
+                        operandNodes[k] = new Parse.Collections.Generic.LinkedList<object>.Enumerator(node);
                         //op.Targets[k](operandNodes[k]);
                     }
 
@@ -235,11 +235,11 @@ namespace OnePassReader
 
         private class Evaluator
         {
-            public System.BiEnumerable.LinkedList<object> Input;
+            public Parse.Collections.Generic.LinkedList<object> Input;
             public LinkedList<LinkedListNode<object>>[] Operations;
             public LinkedList<Operator<TOutput>>[] Operators;
 
-            public Evaluator(System.BiEnumerable.LinkedList<object> input, LinkedList<LinkedListNode<object>>[] operations, LinkedList<Operator<TOutput>>[] operators)
+            public Evaluator(Parse.Collections.Generic.LinkedList<object> input, LinkedList<LinkedListNode<object>>[] operations, LinkedList<Operator<TOutput>>[] operators)
             {
                 Input = input;
                 Operations = operations;

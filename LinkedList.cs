@@ -5,21 +5,37 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using Parse;
-
-namespace System.BiEnumerable
+namespace Parse.Collections.Generic
 {
-    public class LinkedList<T> : Collections.Generic.LinkedList<T>, IOrdered<T>
+    /*public class LinkedListWrapper<T> : IEditEnumerable<T>
+    {
+        private System.Collections.Generic.LinkedList<T> List;
+
+        public LinkedListWrapper(System.Collections.Generic.LinkedList<T> list)
+        {
+            List = list;
+        }
+
+        public IEditEnumerator<T> GetEnumerator() => new LinkedList<T>.Enumerator(List);
+
+        IBiEnumerator<T> IBiEnumerable<T>.GetEnumerator() => GetEnumerator();
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }*/
+
+    public class LinkedList<T> : System.Collections.Generic.LinkedList<T>, IOrdered<T>
     {
         new public IEditEnumerator<T> GetEnumerator() => new Enumerator(this);
-        IBiEnumerator<T> IBiEnumerable<T>.GetEnumerator() => new Enumerator(this);
+        IBiEnumerator<T> IBiEnumerable<T>.GetEnumerator() => GetEnumerator();
         IEditEnumerator<T> IEditEnumerable<T>.GetEnumerator() => GetEnumerator();
 
         [Serializable]
         new public struct Enumerator : IEditEnumerator<T>
         {
             public T Current => Node == null ? default : Node.Value;
-            object IEnumerator.Current => throw new NotImplementedException();
+            object IEnumerator.Current => Current;
 
             private System.Collections.Generic.LinkedList<T> List;
             private LinkedListNode<T> Node;
@@ -87,6 +103,7 @@ namespace System.BiEnumerable
             }
 
             public IEditEnumerator<T> Copy() => new Enumerator(this);
+            IEditEnumerator IEditEnumerator.Copy() => Copy();
 
             public void Dispose() { }
 
@@ -137,7 +154,7 @@ namespace System.BiEnumerable
 
             public override bool Equals(object obj)
             {
-                return obj is Enumerator && Node == ((Enumerator)obj).Node;
+                return obj is Enumerator enumerator && Node == enumerator.Node;
             }
         }
     }
