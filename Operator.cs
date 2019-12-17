@@ -30,7 +30,7 @@ namespace Crunch.Machine
 
 namespace Parse
 {
-    using TargetFunction = Action<IEditEnumerator<object>>;
+    //using TargetFunction = Action<IEditEnumerator<T>>;
     using TokenType = Tuple<string, FunctionWithVariableParamterCount<string>>;
 
     public delegate T FunctionWithVariableParamterCount<T>(params T[] operands);
@@ -58,17 +58,17 @@ namespace Parse
     public class Operator<T>
     {
         public FunctionWithVariableParamterCount<T> Operate;
-        public TargetFunction[] Targets;
+        public Action<IEditEnumerator<T>>[] Targets;
         public ProcessingOrder Order;
 
-        public Operator(FunctionWithVariableParamterCount<T> operate, params TargetFunction[] targets)
+        public Operator(FunctionWithVariableParamterCount<T> operate, params Action<IEditEnumerator<T>>[] targets)
         {
             Operate = operate;
             Targets = targets;
             Order = ProcessingOrder.LeftToRight;
         }
 
-        public Operator(FunctionWithVariableParamterCount<T> operate, ProcessingOrder order, params TargetFunction[] targets) : this(operate, targets)
+        public Operator(FunctionWithVariableParamterCount<T> operate, ProcessingOrder order, params Action<IEditEnumerator<T>>[] targets) : this(operate, targets)
         {
             Order = order;
         }
@@ -98,10 +98,10 @@ namespace Parse
     {
         //public BinaryOperator(Func<T, T, T> func, TargetFunction previous, TargetFunction next) : base((o) => func(o[0], o[1]), previous, next) { }
 
-        public BinaryOperator(Func<T, T, T> func, TargetFunction previous, TargetFunction next, ProcessingOrder order = ProcessingOrder.LeftToRight) : base((o) => func(o[0], o[1]), order, previous, next) { }
+        public BinaryOperator(Func<T, T, T> func, Action<IEditEnumerator<T>> previous, Action<IEditEnumerator<T>> next, ProcessingOrder order = ProcessingOrder.LeftToRight) : base((o) => func(o[0], o[1]), order, previous, next) { }
     }
 
-    public class UnaryOperator<T> : Operator<T> { public UnaryOperator(Func<T, T> func, TargetFunction operand) : base((o) => func(o[0]), ProcessingOrder.RightToLeft, operand) { } }
+    public class UnaryOperator<T> : Operator<T> { public UnaryOperator(Func<T, T> func, Action<IEditEnumerator<T>> operand) : base((o) => func(o[0]), ProcessingOrder.RightToLeft, operand) { } }
 }
 
 /*namespace Parse

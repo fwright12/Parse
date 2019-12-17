@@ -9,7 +9,7 @@ using System.Collections;
 
 using Parse;
 
-#if DEBUG
+#if false
 namespace Test
 {
     public abstract class Reader1<TInput, TOutput> : Reader1<TOutput>

@@ -23,17 +23,37 @@ namespace Parse
     public class Token //: Tuple<object, object>
     {
         public object Value;
+        public Member Class = (Member)(-10);
+
+        public override string ToString()
+        {
+            if (Value is Token)
+            {
+                return "Token";
+            }
+            return Value.ToString();
+        }
     }
 
     public class OperatorToken<T> : Token
     {
         public Operator<T> Operator;
         public int Rank;
+
+        public OperatorToken()
+        {
+            Class = Member.Operator;
+        }
     }
 
     public class OperandToken<T> : Token
     {
         public T Something;
+
+        public OperandToken()
+        {
+            Class = Member.Operand;
+        }
     }
 
     /*public abstract class Token1
@@ -60,11 +80,12 @@ namespace Parse
 
     public class Lexer<TInput, TOutput>
     {
-
         private Trie<Tuple<Operator<TOutput>, int>> Operations;
 
         //private Trie<object> Operators;
-        private HashSet<char> EndOfInput;
+        private HashSet<char> Opening;
+        private HashSet<char> Closing;
+        private HashSet<char> Ignored;
         private Func<IEnumerable<char>, IEnumerable<Token>> Segment;
         //private Trie<Token> Classifier;
 
@@ -72,7 +93,9 @@ namespace Parse
         {
             Operations = operations;
             Segment = segment;
-            EndOfInput = new HashSet<char> { '(', '{', '[', ')', '}', ']' };
+            Opening = new HashSet<char> { '(', '{', '[' };
+            Closing = new HashSet<char> { ')', '}', ']' };
+            Ignored = new HashSet<char> { ' ' };
             
             /*Classifier = new Trie<Token>
             {
@@ -114,8 +137,6 @@ namespace Parse
             }
         }*/
 
-        protected virtual bool IsEndOfInput(char chr) => EndOfInput.Contains(chr);
-
         public IEnumerable<Token> TokenStream(string input)
         {
             for (int i = 0; i < input.Length || buffer1.Length > 0 || buffer2.Length > 0; i++)
@@ -124,12 +145,16 @@ namespace Parse
                 
                 //while (i < input.Length && Ignore.Contains(input[i].ToString())) { i++; }
 
-                if (i >= input.Length || EndOfInput.Contains(input[i]))
+                if (i >= input.Length || Opening.Contains(input[i]) || Closing.Contains(input[i]))
                 {
                     // We have emptied both buffers, so we're done with everything up to this point
                     if (buffer1.Length == 0 && buffer2.Length == 0 && i < input.Length)
                     {
-                        yield return new Token { Value = input[i].ToString() };
+                        yield return new Token
+                        {
+                            Value = input[i].ToString(),
+                            Class = Opening.Contains(input[i]) ? Member.Opening : Member.Closing
+                        };
                     }
                     else
                     {
@@ -144,6 +169,10 @@ namespace Parse
                     {
                         search = TrieContains.Full;
                     }
+                }
+                else if (Ignored.Contains(input[i]))
+                {
+                    continue;
                 }
                 else
                 {

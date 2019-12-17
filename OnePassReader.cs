@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Extensions;
 using Parse;
 
-#if DEBUG
+#if false
 namespace OnePassReader
 {
     public abstract class Reader<TInput, TOutput>
