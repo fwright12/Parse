@@ -38,37 +38,27 @@ namespace Parse
     
     public enum ProcessingOrder { LeftToRight = 1, RightToLeft = -1 }
 
-    /*public class ParseTreeNode//<TInput, TOutput>
+    public class Operator<T> : Operator<T, T>
     {
-        private TokenType Token;
-        private ParseTreeNode[] Operands;
+        public Operator(FunctionWithVariableParamterCount<T> operate, params Action<IEditEnumerator<T>>[] targets) : base(operate, targets) { }
 
-        static ParseTreeNode()
-        {
-            //new ParseTreeNode(new TokenType("+", (o) => null), new ParseTreeNode()));
-        }
+        public Operator(FunctionWithVariableParamterCount<T> operate, ProcessingOrder order, params Action<IEditEnumerator<T>>[] targets) : base(operate, order, targets) { }
+    }
 
-        public ParseTreeNode(string name, FunctionWithVariableParamterCount<string> operation, params ParseTreeNode[] operands)
-        {
-            Token = new TokenType(name, operation);
-            Operands = operands;
-        }
-    }*/
-
-    public class Operator<T>
+    public class Operator<TEnumerated, TOperated>
     {
-        public FunctionWithVariableParamterCount<T> Operate;
-        public Action<IEditEnumerator<T>>[] Targets;
+        public FunctionWithVariableParamterCount<TOperated> Operate;
+        public Action<IEditEnumerator<TEnumerated>>[] Targets;
         public ProcessingOrder Order;
 
-        public Operator(FunctionWithVariableParamterCount<T> operate, params Action<IEditEnumerator<T>>[] targets)
+        public Operator(FunctionWithVariableParamterCount<TOperated> operate, params Action<IEditEnumerator<TEnumerated>>[] targets)
         {
             Operate = operate;
             Targets = targets;
             Order = ProcessingOrder.LeftToRight;
         }
 
-        public Operator(FunctionWithVariableParamterCount<T> operate, ProcessingOrder order, params Action<IEditEnumerator<T>>[] targets) : this(operate, targets)
+        public Operator(FunctionWithVariableParamterCount<TOperated> operate, ProcessingOrder order, params Action<IEditEnumerator<TEnumerated>>[] targets) : this(operate, targets)
         {
             Order = order;
         }
@@ -96,12 +86,19 @@ namespace Parse
 
     public class BinaryOperator<T> : Operator<T>
     {
-        //public BinaryOperator(Func<T, T, T> func, TargetFunction previous, TargetFunction next) : base((o) => func(o[0], o[1]), previous, next) { }
-
         public BinaryOperator(Func<T, T, T> func, Action<IEditEnumerator<T>> previous, Action<IEditEnumerator<T>> next, ProcessingOrder order = ProcessingOrder.LeftToRight) : base((o) => func(o[0], o[1]), order, previous, next) { }
     }
 
+    public class BinaryOperator<TEnumerated, TOperated> : Operator<TEnumerated, TOperated>
+    {
+        //public BinaryOperator(Func<T, T, T> func, TargetFunction previous, TargetFunction next) : base((o) => func(o[0], o[1]), previous, next) { }
+
+        public BinaryOperator(Func<TOperated, TOperated, TOperated> func, Action<IEditEnumerator<TEnumerated>> previous, Action<IEditEnumerator<TEnumerated>> next, ProcessingOrder order = ProcessingOrder.LeftToRight) : base((o) => func(o[0], o[1]), order, previous, next) { }
+    }
+
     public class UnaryOperator<T> : Operator<T> { public UnaryOperator(Func<T, T> func, Action<IEditEnumerator<T>> operand) : base((o) => func(o[0]), ProcessingOrder.RightToLeft, operand) { } }
+
+    public class UnaryOperator<TEnumerated, TOperated> : Operator<TEnumerated, TOperated> { public UnaryOperator(Func<TOperated, TOperated> func, Action<IEditEnumerator<TEnumerated>> operand) : base((o) => func(o[0]), ProcessingOrder.RightToLeft, operand) { } }
 }
 
 /*namespace Parse

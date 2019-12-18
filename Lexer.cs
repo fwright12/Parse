@@ -8,12 +8,42 @@ using System.Extensions;
 
 namespace Parse
 {
-    public class Token
+    public abstract partial class Token<T> : Token
     {
-        public object Value;
+        public Token(object value) : base(value) { }
+
+        public class Operand : Token<T>
+        {
+            public override bool IsOperand => true;
+
+            public Operand(object value) : base(value) { }
+
+            public static implicit operator T(Operand token) => (T)token.Value;
+            public static implicit operator Operand(T t) => new Operand(t);
+        }
+    }
+
+    public sealed class Token1
+    {
+        public class Separator : Token//<object>
+        {
+            public bool IsOpening;
+
+            public Separator(object value) : base(value) { }
+        }
+    }
+
+    public abstract partial class Token
+    {
+        public readonly object Value;
 
         public virtual bool IsOperand => false;
         public virtual bool IsOperator => false;
+
+        public Token(object value)
+        {
+            Value = value;
+        }
 
         public override string ToString()
         {
@@ -24,38 +54,97 @@ namespace Parse
             return Value.ToString();
         }
 
-        public bool IsOpeningToken => this is Separator separator && separator.IsOpening;
+        public bool IsOpeningToken => this is Token1.Separator separator && separator.IsOpening;
 
-        public class Separator : Token
+        public abstract class Operator : Token
         {
-            public bool IsOpening;
-        }
-
-        public class Operator<T> : Token
-        {
-            public Parse.Operator<T> Operation;
             public int Rank;
 
+            public abstract ProcessingOrder Order { get; }// => Operation.Order;
+
+            private object Operation;
+
+            public Operator(object value, object operation) : base(value)
+            {
+                Operation = operation;
+            }
+
             public override bool IsOperator => true;
+
+            public Action<IEditEnumerator<T>>[] GetTargets<T>() => GetOperation<T>().Targets;
+
+            public T Operate<T>(params T[] o) => GetOperation<T>().Operate(o);
+
+            private Parse.Operator<T> GetOperation<T>() => Operation as Parse.Operator<T> ?? throw new Exception("Cannot operate with values of type " + typeof(T));
         }
 
-        public class Operand<T> : Token
+        public class Operator<T> : Operator
         {
-            public T Something;
-            public override bool IsOperand => true;
+            public override ProcessingOrder Order => Operation.Order;
+
+            private Parse.Operator<T> Operation;
+
+            public Operator(object value, Parse.Operator<T> operation) : base(value, operation)
+            {
+                Operation = operation;
+            }
         }
+
+        /*public abstract class AbstractOperator<T> : Token
+        {
+            public int Rank;
+            public abstract ProcessingOrder Order { get; }
+            public abstract Action<IEditEnumerator<T>>[] Targets { get; }
+
+            public override bool IsOperator => true;
+
+            public AbstractOperator(object value) : base(value) { }
+
+            public abstract T Operate(params T[] o);
+        }*/
+
+        /*public class Operator<T1, T2> : AbstractOperator<T1>
+        {
+            private Parse.Operator<T2> Operation;
+            private IConverter<T1, T2> Converter;
+
+            public Operator(object value, Parse.Operator<T2> operation, IConverter<T1, T2> converter) : base(value)
+            {
+                Operation = operation;
+                Converter = converter;
+            }
+
+            public override ProcessingOrder Order => Operation.Order;
+
+            public override Action<IEditEnumerator<T1>>[] Targets
+            {
+                get
+                {
+                    throw new NotImplementedException();
+                    //return Operation.Targets;
+                }
+            }
+
+            public override T1 Operate(params T1[] t)
+            {
+                T2[] result = new T2[t.Length];
+                for (int i = 0; i < t.Length; i++)
+                {
+                    result[i] = Converter.Convert(t[i]);
+                }
+                return Converter.Convert(Operation.Operate(result));
+            }
+        }*/
     }
 
     public class Lexer<TOutput>
     {
         private Trie<Tuple<Operator<TOutput>, int>> Operations;
 
-        //private Trie<object> Operators;
         private HashSet<char> Opening;
         private HashSet<char> Closing;
         private HashSet<char> Ignored;
         private Func<IEnumerable<char>, IEnumerable<Token>> Segment;
-        //private Trie<Token> Classifier;
 
         public Lexer(Trie<Tuple<Operator<TOutput>, int>> operations, Func<IEnumerable<char>, IEnumerable<Token>> segment)
         {
@@ -76,42 +165,16 @@ namespace Parse
             };*/
         }
 
-        /*public CharReader(params KeyValuePair<string, Operator<TOutput>>[][] operations) : base(operations.Flatten(new Trie<Tuple<Operator<TOutput>, int>>()))
-        {
-            Opening = new HashSet<string> { "(", "{", "[" };
-            Closing = new HashSet<string> { ")", "}", "]" };
-            Ignore = new HashSet<string> { " " };
-        }*/
-
-        /*public CharReader(Trie<Tuple<Operator<TOutput>, int>> operations) : base(operations)
-        {
-            Opening = new HashSet<string> { "(", "{", "[" };
-            Closing = new HashSet<string> { ")", "}", "]" };
-            Ignore = new HashSet<string> { " " };
-        }*/
-
         private string buffer1 = "";
         private string buffer2 = "";
         private Token.Operator<TOutput> lastOperation = null;
         private Token.Operator<TOutput> temp = null;
-
-        //public TOutput Parse(string input) => Parse(Next(input));
-
-        /*protected virtual IEnumerable<Token> Segment(IEnumerable<char> pieces)
-        {
-            foreach (char c in pieces)
-            {
-                yield return new OperandToken<TOutput> { Value = c };
-            }
-        }*/
 
         public IEnumerable<Token> TokenStream(string input)
         {
             for (int i = 0; i < input.Length || buffer1.Length > 0 || buffer2.Length > 0; i++)
             {
                 TrieContains search;
-                
-                //while (i < input.Length && Ignore.Contains(input[i].ToString())) { i++; }
 
                 if (i >= input.Length || Opening.Contains(input[i]) || Closing.Contains(input[i]))
                 {
@@ -119,9 +182,8 @@ namespace Parse
                     if (buffer1.Length == 0 && buffer2.Length == 0 && i < input.Length)
                     {
                         char c = input[i];
-                        yield return new Token.Separator
+                        yield return new Token1.Separator(c.ToString())
                         {
-                            Value = c.ToString(),
                             //Class = Opening.Contains(c) ? Member.Opening : Member.Closing,
                             IsOpening = Opening.Contains(c)
                         };
@@ -155,10 +217,8 @@ namespace Parse
                     search = Operations.TryGetValue1(key, out tuple);
                     if (tuple != null)
                     {
-                        temp = new Token.Operator<TOutput>
+                        temp = new Token.Operator<TOutput>(key, tuple.Item1)
                         {
-                            Value = key,
-                            Operation = tuple.Item1,
                             Rank = tuple.Item2,
                         };
                     }
