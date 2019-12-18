@@ -27,6 +27,9 @@ namespace Parse.Collections.Generic
 
     public class LinkedList<T> : System.Collections.Generic.LinkedList<T>, IOrdered<T>
     {
+        public LinkedList() : base() { }
+        public LinkedList(IEnumerable<T> collection) : base(collection) { }
+
         new public IEditEnumerator<T> GetEnumerator() => new Enumerator(this);
         IBiEnumerator<T> IBiEnumerable<T>.GetEnumerator() => GetEnumerator();
         IEditEnumerator<T> IEditEnumerable<T>.GetEnumerator() => GetEnumerator();

@@ -8,22 +8,12 @@ using System.Extensions;
 
 namespace Parse
 {
-    public interface IEvaluator
-    {
-        object Evaluate(object itr);
-    }
-
-    /*public class Evaluator : IEvaluator
-    {
-        private Func<object, Token1> EvaluateFunc;
-
-        public object Evaluate(object itr) => EvaluateFunc(itr);
-    }*/
-
-    public class Token //: Tuple<object, object>
+    public class Token
     {
         public object Value;
-        public Member Class = (Member)(-10);
+
+        public virtual bool IsOperand => false;
+        public virtual bool IsOperator => false;
 
         public override string ToString()
         {
@@ -33,52 +23,30 @@ namespace Parse
             }
             return Value.ToString();
         }
-    }
 
-    public class OperatorToken<T> : Token
-    {
-        public Operator<T> Operator;
-        public int Rank;
+        public bool IsOpeningToken => this is Separator separator && separator.IsOpening;
 
-        public OperatorToken()
+        public class Separator : Token
         {
-            Class = Member.Operator;
+            public bool IsOpening;
+        }
+
+        public class Operator<T> : Token
+        {
+            public Parse.Operator<T> Operation;
+            public int Rank;
+
+            public override bool IsOperator => true;
+        }
+
+        public class Operand<T> : Token
+        {
+            public T Something;
+            public override bool IsOperand => true;
         }
     }
 
-    public class OperandToken<T> : Token
-    {
-        public T Something;
-
-        public OperandToken()
-        {
-            Class = Member.Operand;
-        }
-    }
-
-    /*public abstract class Token1
-    {
-        public Member Name;
-        public int Rank;
-
-        public abstract Token1 Operate(IEditEnumerator<Token1> itr);
-    }
-
-    public class Token<T> : Token1
-    {
-        public Operator<T> Operator;
-        public ProcessingOrder Order;
-        public Func<IEditEnumerator<Token1>, Token1> Operation;
-
-        public override Token1 Operate(IEditEnumerator<Token1> itr) => Operation(itr);
-    }*/
-
-    public interface IClassifier<T>
-    {
-        Member Classify(T input);
-    }
-
-    public class Lexer<TInput, TOutput>
+    public class Lexer<TOutput>
     {
         private Trie<Tuple<Operator<TOutput>, int>> Operations;
 
@@ -124,8 +92,8 @@ namespace Parse
 
         private string buffer1 = "";
         private string buffer2 = "";
-        private OperatorToken<TOutput> lastOperation = null;
-        private OperatorToken<TOutput> temp = null;
+        private Token.Operator<TOutput> lastOperation = null;
+        private Token.Operator<TOutput> temp = null;
 
         //public TOutput Parse(string input) => Parse(Next(input));
 
@@ -150,10 +118,12 @@ namespace Parse
                     // We have emptied both buffers, so we're done with everything up to this point
                     if (buffer1.Length == 0 && buffer2.Length == 0 && i < input.Length)
                     {
-                        yield return new Token
+                        char c = input[i];
+                        yield return new Token.Separator
                         {
-                            Value = input[i].ToString(),
-                            Class = Opening.Contains(input[i]) ? Member.Opening : Member.Closing
+                            Value = c.ToString(),
+                            //Class = Opening.Contains(c) ? Member.Opening : Member.Closing,
+                            IsOpening = Opening.Contains(c)
                         };
                     }
                     else
@@ -185,10 +155,10 @@ namespace Parse
                     search = Operations.TryGetValue1(key, out tuple);
                     if (tuple != null)
                     {
-                        temp = new OperatorToken<TOutput>
+                        temp = new Token.Operator<TOutput>
                         {
                             Value = key,
-                            Operator = tuple.Item1,
+                            Operation = tuple.Item1,
                             Rank = tuple.Item2,
                         };
                     }

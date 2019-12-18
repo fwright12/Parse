@@ -11,62 +11,63 @@ namespace Parse
 {
     public enum Member { Opening = -1, Closing = 1, Operand, Operator };
 
-    public abstract class Reader<TOutput>
+    public interface IClassifier<T>
     {
-        /*public HashSet<TInput> Opening;
-        public HashSet<TInput> Closing;
-        public HashSet<TInput> Ignore;
+        Token Classify(T input);
+    }
 
-        public readonly IDictionary<TInput, Tuple<Operator<TOutput>, int>> Operations;
+    public class Classifier<T> : IClassifier<T>
+    {
+        private readonly Func<T, Token> Implementation;
 
-        protected Reader(IDictionary<TInput, Tuple<Operator<TOutput>, int>> operations)
+        public Classifier(Func<T, Token> implementation)
         {
-            Operations = operations;
+            Implementation = implementation;
+        }
 
-            Opening = new HashSet<TInput>();
-            Closing = new HashSet<TInput>();
-            Ignore = new HashSet<TInput>();
+        public Token Classify(T input) => Implementation(input);
+    }
 
-            foreach (KeyValuePair<TInput, Tuple<Operator<TOutput>, int>> kvp in Operations)
-            {
-                if (Opening.Contains(kvp.Key) || Closing.Contains(kvp.Key))
-                {
-                    throw new Exception("The character " + kvp + " cannot appear in a command - this character is used to separate quantities");
-                }
-                /*else if (kvp.Value.Item1.Order != Operations[i].First().Value.Item1.Order)
-                {
-                    throw new Exception("All operators in a tier must process in the same direction");
-                }
-            }
-        }*/
+    public class Reader : Reader<Token>
+    {
+        public Reader(Func<IEnumerable<Token>, Token> juxtapose) : base(new Classifier<Token>((token) => token), juxtapose) { }
+    }
 
-        protected abstract TOutput ParseOperand(object operand);
-        public TOutput ParseOperand<T>(IEditEnumerator<T> itr)
+    public class Reader<TOutput>
+    {
+        private readonly IClassifier<TOutput> Classifier;
+        private readonly Func<IEnumerable<TOutput>, TOutput> Juxtapose;
+
+        public Reader(IClassifier<TOutput> classifier, Func<IEnumerable<TOutput>, TOutput> juxtapose)
         {
-            Member member = Classify(itr.Current).Class;
-            if (member == Member.Opening || member == Member.Closing)
+            Classifier = classifier;
+            Juxtapose = juxtapose;
+        }
+
+        public TOutput ParseOperand(IEditEnumerator<TOutput> itr)
+        {
+            Token token = Classifier.Classify(itr.Current);
+            if (token is Token.Separator separator)
             {
-                itr.Add(0, Parse((dynamic)itr, (ProcessingOrder)(-(int)member)));
+                itr.Add(0, Parse(itr, separator.IsOpening ? ProcessingOrder.LeftToRight : ProcessingOrder.RightToLeft));
             }
-            else if (member == Member.Operator)
+            else if (token.GetType().Is(typeof(Token.Operator<>)))
             {
                 throw new Exception("Invalid syntax. Looking for operand but got operator");
             }
-
-            return ParseOperand(itr.Current);
-            object current = itr.Current;
-            return current is TOutput ? (TOutput)current : ParseOperand(current);
+            
+            return itr.Current;
         }
 
-        protected virtual TOutput Juxtapose(IEnumerable<TOutput> expression) => expression.First();
+        private bool IsOpening(Token.Separator token, ProcessingOrder direction) => (int)direction == token.IsOpening.ToInt() * 2 - 1;
 
-        public IEnumerable<TOutput> CollectOperands<T>(IEditEnumerator<T> itr, ProcessingOrder direction = ProcessingOrder.LeftToRight) => CollectWhile(itr, (itr1) =>
+        public IEnumerable<TOutput> CollectOperands(IEditEnumerator<TOutput> itr, ProcessingOrder direction = ProcessingOrder.LeftToRight) => CollectWhile(itr, (itr1) =>
         {
-            Member member = Classify(itr1.Current).Class;
-            return member != Member.Operator && (int)direction != (int)member;
+            Token token = Classifier.Classify(itr1.Current);
+            return !token.GetType().Is(typeof(Token.Operator<>)) && (!(token is Token.Separator separator) ||IsOpening(separator, direction));
         }, direction);
 
-        public IEnumerable<TOutput> CollectWhile<T>(IEditEnumerator<T> itr, Func<IEditEnumerator<T>, bool> condition, ProcessingOrder direction = ProcessingOrder.LeftToRight)
+        public IEnumerable<TOutput> CollectWhile(IEditEnumerator<TOutput> itr, Func<IEditEnumerator<TOutput>, bool> condition, ProcessingOrder direction = ProcessingOrder.LeftToRight)
         {
             bool empty = true;
             
@@ -91,11 +92,11 @@ namespace Parse
             }
         }
 
-        public abstract Token Classify(object input);
+        public TOutput Parse(IEnumerable<TOutput> input) => Parse(new Collections.Generic.LinkedList<TOutput>(input));
 
-        public object Parse(IEditEnumerable<TOutput> input) => Parse(input.GetEnumerator());
+        public TOutput Parse(IEditEnumerable<TOutput> input) => Parse(input.GetEnumerator());
 
-        public object Parse(IEditEnumerator<TOutput> start, ProcessingOrder direction = ProcessingOrder.LeftToRight)
+        public TOutput Parse(IEditEnumerator<TOutput> start, ProcessingOrder direction = ProcessingOrder.LeftToRight)
         {
             SortedDictionary<int, ProcessingOrder> order = new SortedDictionary<int, ProcessingOrder>();
             int count = 0;
@@ -129,41 +130,48 @@ namespace Parse
             // Also delete anything that's supposed to be ignored
             while (end.Move((int)direction) && end.Current != null)
             {
-                //Token token = (Token)end.Current;
-                Token token = Classify(end.Current);
-                
-                // This is the "close" bracket for the direction we're moving
-                if ((int)direction == (int)token.Class)
+                Token token = Classifier.Classify(end.Current);
+
+                if (token is Token.Separator separator)
                 {
-                    // This is the end of the expression we're working on
-                    if (count == 0)
+                    // This is the "open" bracket for the direction we're moving
+                    if (IsOpening(separator, direction))
                     {
-                        break;
+                        count++;
                     }
+                    // This is the "close" bracket for the direction we're moving
                     else
                     {
-                        count--;
+                        // This is the end of the expression we're working on
+                        if (count == 0)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            count--;
+                        }
                     }
                 }
-                // This is the "open" bracket for the direction we're moving
-                else if ((int)direction == -(int)token.Class)
-                {
-                    count++;
-                }
                 // Keep track of what operators we find so we can skip them later
-                else if (token is OperatorToken<TOutput> operatorToken)
+                else if (token is Token.Operator<TOutput> operatorToken)
                 {
-                    order[operatorToken.Rank] = operatorToken.Operator.Order;
+                    order[operatorToken.Rank] = operatorToken.Operation.Order;
                 }
             }
 
+            return Parse(order, start, end, direction);
+        }
+
+        private TOutput Parse(SortedDictionary<int, ProcessingOrder> order, IEditEnumerator<TOutput> start, IEditEnumerator<TOutput> end, ProcessingOrder direction = ProcessingOrder.LeftToRight)
+        {
             foreach (KeyValuePair<int, ProcessingOrder> kvp in order)
             {
                 IEditEnumerator<TOutput> itr = kvp.Value == ProcessingOrder.LeftToRight ^ direction == ProcessingOrder.LeftToRight ? end.Copy() : start.Copy();
                 
                 while (itr.Move((int)kvp.Value) && !itr.Equals(start) && !itr.Equals(end) && itr.Current != null)
                 {
-                    if (!(Classify(itr.Current) is OperatorToken<TOutput> token))
+                    if (!(Classifier.Classify(itr.Current) is Token.Operator<TOutput> token))
                     {
                         continue;
                     }
@@ -174,7 +182,7 @@ namespace Parse
                     {
                         Print.Log("doing operation", token.Value);
 
-                        Operator<TOutput> operation = token.Operator;
+                        Operator<TOutput> operation = token.Operation;
                         itr.Add(0, default);
                         
                         IEditEnumerator<TOutput>[] operandItrs = new IEditEnumerator<TOutput>[operation.Targets.Length];
@@ -199,7 +207,7 @@ namespace Parse
 
 #if DEBUG
             Print.Log("done");
-            printer = start.Copy();
+            IEditEnumerator<TOutput> printer = start.Copy();
             while (printer.MoveNext())
             {
                 Print.Log("\t" + printer.Current);
