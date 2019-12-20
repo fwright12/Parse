@@ -91,13 +91,13 @@ namespace Parse
 
     public class Operator<T>
     {
-        public FunctionWithVariableParamterCount<T> OperateFunc;
+        public FunctionWithVariableParamterCount<T> Operate;
         public Action<IEditEnumerator<T>>[] Targets;
         public ProcessingOrder Order;
 
         public Operator(FunctionWithVariableParamterCount<T> operateFunc, params Action<IEditEnumerator<T>>[] targets)
         {
-            OperateFunc = operateFunc;
+            Operate = operateFunc;
             Targets = targets;
             Order = ProcessingOrder.LeftToRight;
         }

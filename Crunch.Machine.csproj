@@ -59,6 +59,8 @@
   <ItemGroup>
     <Compile Include="BiEnumeration.cs" />
     <Compile Include="CharReader.cs" />
+    <Compile Include="Comparer.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="IList.cs" />
     <Compile Include="Lexer.cs" />
     <Compile Include="LinkedList.cs" />

@@ -198,7 +198,7 @@ namespace Parse
                             operandItrs[j].Remove(0);
                         }
 
-                        itr.Add(0, operation.OperateFunc(operands));
+                        itr.Add(0, operation.Operate(operands));
                     }
                 }
             }

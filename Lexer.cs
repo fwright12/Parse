@@ -37,19 +37,26 @@ namespace Parse
             new public T Value => (T)base.Value;
 
             public Operand(T value) : base(value) { }
+
+            public static implicit operator Operand<T>(T t) => new Operand<T>(t);
+            public static implicit operator T(Operand<T> operand) => operand.Value;
         }
 
         public abstract class Operator : Token
         {
-            public Operator(object value) : base(value) { }
+            public readonly int Rank;
+
+            public Operator(object value, int rank) : base(value)
+            {
+                Rank = rank;
+            }
         }
 
         public class Operator<T> : Operator
         {
-            public Parse.Operator<T> Operation;
-            public int Rank;
+            public readonly Parse.Operator<T> Operation;
 
-            public Operator(object value, Parse.Operator<T> operation) : base(value)
+            public Operator(object value, Parse.Operator<T> operation, int rank) : base(value, rank)
             {
                 Operation = operation;
 
@@ -73,9 +80,12 @@ namespace Parse
 
         public class Separator : Token
         {
-            public bool IsOpening;
+            public readonly bool IsOpening;
 
-            public Separator(object value) : base(value) { }
+            public Separator(object value, bool isOpening) : base(value)
+            {
+                IsOpening = isOpening;
+            }
         }
     }
 
@@ -124,10 +134,7 @@ namespace Parse
                     if (buffer1.Length == 0 && buffer2.Length == 0 && i < input.Length)
                     {
                         char c = input[i];
-                        yield return new Token.Separator(c.ToString())
-                        {
-                            IsOpening = Opening.Contains(c)
-                        };
+                        yield return new Token.Separator(c.ToString(), Opening.Contains(c));
                     }
                     else
                     {
@@ -158,10 +165,7 @@ namespace Parse
                     search = Operations.TryGetValue1(key, out tuple);
                     if (tuple != null)
                     {
-                        temp = new Token.Operator<Token>(key, tuple.Item1)
-                        {
-                            Rank = tuple.Item2,
-                        };
+                        temp = new Token.Operator<Token>(key, tuple.Item1, tuple.Item2);
                     }
                 }
 
